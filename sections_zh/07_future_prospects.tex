@@ -1,0 +1,166 @@
+%=============================================================================
+\section{展望：数据驱动与基于学习的控制}
+%=============================================================================
+
+前述所有方法------PID、状态空间、LQR、卡尔曼滤波、MPC------均假设已知被控对象的\emph{模型}。然而在实际工程中，获取精确模型往往是最困难的环节。新一代技术试图绕过或增强建模步骤，直接从数据中学习控制策略。本章概览这些前沿方向，并讨论它们与经典控制理论的关系。
+
+\subsection{数据驱动控制}
+
+\subsubsection{动机：从``先建模再控制''到``直接从数据控制''}
+
+传统流程是：采集数据 $\to$ 系统辨识 $\to$ 建立模型 $\to$ 设计控制器。每一步都会引入误差，误差会逐级放大。一个自然的问题是：\emph{能否跳过建模，直接从数据设计控制器？}
+
+\subsubsection{Willems 基本引理}
+
+这一切的理论基础是 \textbf{Willems 基本引理（Fundamental Lemma, 2005）}：对于线性时不变系统，若一条长度为 $T$ 的输入--输出轨迹具有足够阶数的\emph{持续激励（persistent excitation）}特性，则系统的\emph{所有}可能轨迹均可表示为该数据 Hankel 矩阵各列的线性组合：
+\[
+\begin{bmatrix} U_- \\ X_- \\ U_+ \\ X_+ \end{bmatrix} g = \begin{bmatrix} u_{\mathrm{ini}} \\ x_{\mathrm{ini}} \\ u \\ x \end{bmatrix},
+\]
+其中 $U_-, X_-$ 为历史数据构成的 Hankel 矩阵，$g$ 为待求的系数向量。
+
+\textbf{直觉解读：}一条足够丰富的轨迹``编码''了系统的全部动力学信息，与知道 $(A, B)$ 矩阵等价。
+
+\subsubsection{数据驱动 LQR}
+
+利用 Willems 引理，LQR 问题
+\[
+\min_{K}\; \sum_{k=0}^{\infty} \bigl(x_k^\top Q\, x_k + u_k^\top R\, u_k\bigr)
+\]
+可以直接基于 Hankel 矩阵构建的数据一致性约束来求解，\emph{无需辨识} $A$ 或 $B$。
+
+\textbf{局限性：}
+\begin{itemize}[nosep]
+    \item 数据必须满足持续激励条件------随机噪声不够，输入信号需足够丰富。
+    \item 对测量噪声较为敏感。
+    \item 目前仅适用于线性系统（非线性扩展是活跃的研究方向）。
+\end{itemize}
+
+\subsubsection{数据驱动 MPC（DeePC）}
+
+DeePC（Data-Enabled Predictive Control）将 Willems 引理与 MPC 结合：用数据 Hankel 矩阵替代预测模型，直接在数据空间中求解预测控制问题。这使得 MPC 的约束处理能力得以保留，同时无需显式系统辨识。
+
+\subsection{强化学习与控制}
+
+强化学习（RL）将最优控制推广到具有任意代价函数和约束的非线性系统。
+
+\subsubsection{核心概念}
+
+\begin{itemize}[nosep]
+    \item \textbf{策略} $\pi(s) \to a$：从状态到动作的映射------即控制器。在线性二次情形下，$\pi(x) = -Kx$ 退化为 LQR。
+    \item \textbf{值函数} $V^\pi(s) = \mathbb{E}\bigl[\sum_{t=0}^{\infty} \gamma^t r_t \mid s_0 = s\bigr]$：从某状态出发的期望累积奖励，类比动态规划中的最优代价函数（cost-to-go）。
+    \item \textbf{策略梯度}：沿 $\nabla_\theta J(\theta)$ 方向更新策略参数 $\theta$，使期望奖励最大化。
+\end{itemize}
+
+\subsubsection{两种范式}
+
+\begin{enumerate}[nosep]
+    \item \textbf{无模型 RL}（PPO、SAC 等）：通过试错直接学习策略，不需要动力学模型。通用性强，但\emph{样本效率}极低------通常需要数百万次交互，仅在仿真中可行，部署时需进行 sim-to-real 迁移。
+    \item \textbf{基于模型的 RL}（MBPO、Dreamer 等）：先从数据中学习动力学模型，再利用该模型进行规划或策略优化。样本效率更高，更接近传统控制的思路。
+\end{enumerate}
+
+\subsubsection{Sim-to-Real 迁移}
+
+RL 策略通常在仿真中训练，但仿真与真实系统之间存在差距（sim-to-real gap）。常用的弥合策略：
+\begin{itemize}[nosep]
+    \item \textbf{域随机化（Domain Randomization）}：在训练时随机化物理参数（质量、摩擦系数、延迟等），迫使策略学习对参数变化具有鲁棒性的行为。
+    \item \textbf{系统辨识与高保真仿真}：精确标定仿真参数，缩小仿真与真实之间的差距。
+    \item \textbf{微调（Fine-tuning）}：先在仿真中预训练，再在真实系统上用少量数据进行微调。
+\end{itemize}
+
+\subsubsection{成功案例与现状}
+
+RL 在科研领域取得了显著成果：
+\begin{itemize}[nosep]
+    \item \textbf{足式运动}：MIT Mini Cheetah、ANYmal 等四足机器人通过 RL 学会了在崎岖地形上行走和奔跑。
+    \item \textbf{灵巧操控}：OpenAI 的魔方求解、谷歌的机器人抓取。
+    \item \textbf{无人机竞速}：苏黎世联邦理工 Swift 系统在无人机竞速中超越人类冠军。
+\end{itemize}
+
+\textbf{但在工程竞赛和工业场景中 RL 仍然罕见，原因包括：}
+\begin{itemize}[nosep]
+    \item 训练需要高保真仿真环境，开发成本高。
+    \item 学习到的策略是``黑箱''，调试极其困难。
+    \item 竞赛周期通常不足以完成 RL 的开发迭代。
+    \item 安全性和可解释性保证不足。
+\end{itemize}
+
+\subsection{轨迹优化与最优控制}
+
+最优控制的目标是寻找 $u(t)$ 使代价泛函最小化：
+\[
+J = \int_0^T L\bigl(x(t), u(t)\bigr)\,\mathrm{d}t + \Phi\bigl(x(T)\bigr),
+\]
+约束为动力学方程 $\dot{x} = f(x, u)$。
+
+\subsubsection{两类求解策略}
+
+\begin{itemize}[nosep]
+    \item \textbf{间接法}（庞特里亚金极大值原理）：推导伴随方程得到必要条件，求解两点边值问题。数学上优雅，但对复杂约束系统的实现难度大。
+    \item \textbf{直接法}（配点法、多重打靶法）：将轨迹离散化为决策变量，转化为大规模非线性规划（NLP）。更具实用性------现代轨迹优化工具普遍采用此策略。
+\end{itemize}
+
+\subsubsection{iLQR 与 DDP}
+
+\textbf{迭代 LQR（iLQR）}与\textbf{微分动态规划（DDP）}是现代机器人轨迹优化的主力算法：在标称轨迹处线性化非线性动力学，求解对应的 LQR 子问题获得修正量，更新轨迹后重复迭代。
+
+\textbf{与 MPC 的联系：}模型预测控制本质上是在每个时间步以滚动时域方式重复求解轨迹优化。当动力学为非线性时，MPC 内部常使用 iLQR 或 NLP 求解器。
+
+\textbf{常用工具：}CasADi、Drake、ALTRO、Crocoddyl、MATLAB \texttt{fmincon}。
+
+\subsection{神经网络与控制的融合}
+
+\subsubsection{神经网络作为控制器组件}
+
+神经网络不一定要替代整个控制器，更实用的方式是将其嵌入经典控制框架的特定模块中：
+\begin{itemize}[nosep]
+    \item \textbf{学习动力学模型}：用神经网络拟合 $\dot{x} = f_\theta(x, u)$，然后在 MPC 或 iLQR 中使用该模型。
+    \item \textbf{学习残差动力学}：$\dot{x} = f_{\mathrm{phys}}(x, u) + f_\theta(x, u)$，让神经网络补偿物理模型未能捕捉的部分。
+    \item \textbf{学习代价函数}：从人类演示中学习任务目标（逆强化学习）。
+\end{itemize}
+
+\subsubsection{安全约束与可验证性}
+
+将学习方法与安全保证结合是当前的热点研究方向：
+\begin{itemize}[nosep]
+    \item \textbf{控制屏障函数（CBF）}：为学习到的策略添加安全约束层，确保系统状态不离开安全集合。
+    \item \textbf{Lyapunov 神经网络}：训练神经网络同时学习控制器和 Lyapunov 函数，从而提供稳定性证明。
+    \item \textbf{可达性分析}：计算系统在学习策略下的可达集合，验证其是否满足安全要求。
+\end{itemize}
+
+\subsection{方法全景对比}
+
+\begin{center}
+\small
+\begin{tabular}{l c c c c}
+\toprule
+\textbf{方法} & \textbf{需要模型？} & \textbf{处理非线性？} & \textbf{实时？} & \textbf{成熟度} \\
+\midrule
+PID & 否（经验调参） & 局部 & 是 & 工业标准 \\
+LQR & 是（线性） & 否 & 是 & 成熟 \\
+MPC（线性） & 是（线性） & 否 & 是 & 成熟 \\
+NMPC & 是（非线性） & 是 & 视情况 & 初步工业应用 \\
+数据驱动 LQR & 否（仅数据） & 否 & 是 & 学术前沿 \\
+DeePC & 否（仅数据） & 有限 & 视情况 & 学术前沿 \\
+基于模型的 RL & 学习所得 & 是 & 离线训练 & 科研验证 \\
+无模型 RL & 否 & 是 & 离线训练 & 科研验证 \\
+iLQR / DDP & 是（非线性） & 是 & 准实时 & 科研/初步工业 \\
+神经网络 + MPC & 混合 & 是 & 视情况 & 学术前沿 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{给读者的建议}
+
+\begin{mdframed}
+\textbf{全局视角。}\;控制理论与机器学习之间的边界正在消融。数据驱动方法带来了自适应能力，基于学习的方法带来了处理复杂性的能力。但本文所涵盖的基础内容------状态空间建模、稳定性分析、观测器设计、最优控制------仍然是这一切的\emph{根基}。
+
+\textbf{实用路线图：}
+\begin{enumerate}[nosep]
+    \item \textbf{先掌握经典方法。}PID、LQR、MPC、卡尔曼滤波------这些工具在绝大多数机器人应用中足够使用，且可靠、可调试、有理论保证。
+    \item \textbf{当经典方法遇到瓶颈时，引入数据驱动技术。}系统难以建模？尝试数据驱动 LQR/MPC。环境变化大？考虑自适应控制。
+    \item \textbf{RL 用于``经典方法做不到的事''。}极端敏捷运动、高维灵巧操控、复杂接触交互------这些场景下 RL 的优势才真正显现。
+    \item \textbf{永远保留安全层。}无论控制器多么``智能''，添加控制屏障函数或硬件安全限位，确保系统不会做出危险动作。
+\end{enumerate}
+
+深入理解经典基础，将使你成为更优秀的高级方法使用者，而非被取代者。
+\end{mdframed}
