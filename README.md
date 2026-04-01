@@ -2,11 +2,6 @@
 
 [中文 README](./README_zh.md)
 
-**Author:** Skywalker Liu  
-**Language:** English + Chinese (Simplified)  
-**Format:** LaTeX (XeLaTeX)  
-**License:** Educational use
-
 ---
 
 ## What Is This?
