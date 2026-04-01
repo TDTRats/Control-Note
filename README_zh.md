@@ -2,11 +2,6 @@
 
 [English README](./README.md)
 
-**作者：** Skywalker Liu  
-**语言：** 英文 + 简体中文  
-**格式：** LaTeX (XeLaTeX)  
-**许可：** 仅供学习使用
-
 ---
 
 ## 这是什么？
