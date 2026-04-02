@@ -944,6 +944,81 @@ public:
     set_accel(u(0,0), u(1,0));
 \end{verbatim}
 
+\subsection{三次贝塞尔曲线轨迹（Cubic B\'{e}zier Trajectory）}
+
+通过四个控制点生成平滑的二维路径。适用于全向底盘路径规划和末端执行器轨迹。
+
+\begin{verbatim}
+// bezier.hpp -- Cubic Bezier curve for 2D trajectory generation
+#pragma once
+
+struct Vec2 { float x, y; };
+
+class CubicBezier {
+public:
+    Vec2 p0, p1, p2, p3;  // Control points
+
+    /// Evaluate position at parameter t in [0, 1]
+    Vec2 position(float t) const {
+        float u = 1.0f - t;
+        float u2 = u * u, t2 = t * t;
+        float u3 = u2 * u, t3 = t2 * t;
+        return {
+            u3*p0.x + 3*u2*t*p1.x + 3*u*t2*p2.x + t3*p3.x,
+            u3*p0.y + 3*u2*t*p1.y + 3*u*t2*p2.y + t3*p3.y
+        };
+    }
+
+    /// Evaluate first derivative (tangent) at parameter t
+    Vec2 tangent(float t) const {
+        float u = 1.0f - t;
+        return {
+            3*(u*u*(p1.x-p0.x) + 2*u*t*(p2.x-p1.x) + t*t*(p3.x-p2.x)),
+            3*(u*u*(p1.y-p0.y) + 2*u*t*(p2.y-p1.y) + t*t*(p3.y-p2.y))
+        };
+    }
+
+    /// Evaluate second derivative (curvature direction)
+    Vec2 acceleration(float t) const {
+        float u = 1.0f - t;
+        return {
+            6*(u*(p2.x - 2*p1.x + p0.x) + t*(p3.x - 2*p2.x + p1.x)),
+            6*(u*(p2.y - 2*p1.y + p0.y) + t*(p3.y - 2*p2.y + p1.y))
+        };
+    }
+
+    /// Approximate arc length by summing N linear segments
+    float arc_length(int N = 100) const {
+        float len = 0;
+        Vec2 prev = p0;
+        for (int i = 1; i <= N; ++i) {
+            Vec2 cur = position(static_cast<float>(i) / N);
+            float dx = cur.x - prev.x, dy = cur.y - prev.y;
+            len += sqrtf(dx*dx + dy*dy);
+            prev = cur;
+        }
+        return len;
+    }
+};
+\end{verbatim}
+
+\textbf{使用示例——全向底盘路径：}
+\begin{verbatim}
+    CubicBezier path;
+    path.p0 = {0, 0};        // Start
+    path.p1 = {1.0f, 0};     // Exit direction: forward
+    path.p2 = {2.0f, 1.5f};  // Entry direction at end
+    path.p3 = {3.0f, 1.5f};  // End point
+
+    // Track with 50 samples
+    for (int i = 0; i <= 50; ++i) {
+        float t = static_cast<float>(i) / 50;
+        Vec2 pos = path.position(t);
+        Vec2 vel = path.tangent(t);  // For feedforward heading
+        // Send (pos.x, pos.y) to chassis controller
+    }
+\end{verbatim}
+
 \subsection{模块依赖关系图（Module Dependency Map）}
 
 \begin{center}
@@ -962,6 +1037,7 @@ EKF IMU（6自由度） & \texttt{ekf\_imu.hpp} & \texttt{mat.hpp} \\
 LQR 控制器 & \texttt{lqr.hpp} & \texttt{mat.hpp} \\
 TinyMPC 求解器 & \texttt{tiny\_mpc.hpp} & \texttt{mat.hpp} \\
 串级 PID & \texttt{cascaded\_pid.hpp} & \texttt{pid.hpp} \\
+三次贝塞尔曲线 & \texttt{bezier.hpp} & （无） \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -987,7 +1063,7 @@ TinyMPC 求解器 & \texttt{tiny\_mpc.hpp} & \texttt{mat.hpp} \\
 电机实际特性是什么？ & 电机建模（第 3 节） \\
 单电机转速/位置控制 & PID（第 4 节） \\
 云台跟踪 & PID + 前馈（第 4 节） \\
-平滑点对点运动 & 轨迹生成（第 4 节） \\
+平滑点对点运动 & 轨迹生成（第 6 节） \\
 将 PID 从纸面移植到 MCU & Tustin 离散化（第 5 节） \\
 平衡小车 / MIMO 系统 & LQR（第 6 节） \\
 带约束的轨迹跟踪 & MPC（第 6 节） \\
@@ -1002,4 +1078,3 @@ IMU + 编码器融合 & 扩展卡尔曼滤波器（第 6 节） \\
 
 祝你在下次比赛中好运。去造出令人惊叹的东西吧。
 
-\end{document}
