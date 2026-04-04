@@ -4,7 +4,7 @@
 
 You might be wondering: ``I signed up for control theory, why are we starting with signal processing?'' Great question. Here is the answer: \textbf{garbage in, garbage out.}
 
-Your controller is only as good as the data it receives. If your IMU reading is bouncing around like a caffeinated squirrel, no amount of PID tuning will save you. So before we learn to control systems, we learn to clean up their signals.
+Your controller is only as good as the data it receives. If your IMU (Inertial Measurement Unit---the small chip that combines accelerometers and gyroscopes to measure orientation and motion) reading is bouncing around like a caffeinated squirrel, no amount of PID tuning will save you. So before we learn to control systems, we learn to clean up their signals.
 
 \subsection{Understanding the Frequency Domain}
 
@@ -71,7 +71,29 @@ The \textbf{exponential decay} $e^{-at}$:
 \[
 \mathcal{L}\{e^{-at}\} = \int_0^{\infty} e^{-at} e^{-st} \, dt = \int_0^{\infty} e^{-(s+a)t} \, dt = \frac{1}{s+a}
 \]
-This is why a first-order system with pole at $s = -a$ has a time response of $e^{-at}$---the pole location \textit{is} the decay rate.
+Notice that $F(s) = \frac{1}{s+a}$ ``blows up'' when $s = -a$. That special value of $s$ is called a \textbf{pole}---we will define it properly in a moment.
+
+\subsubsection{A First Look at Poles and Zeros}
+
+We just saw that $\mathcal{L}\{e^{-at}\} = \frac{1}{s+a}$. The denominator becomes zero at $s = -a$, which means $F(s)$ shoots to infinity there. That point is called a \textbf{pole}.
+
+In general, for any rational function in $s$---and most \textbf{transfer functions} (the ratio of a system's output to its input in the $s$-domain, which we will derive properly in the next chapter) are rational---we write:
+\[
+G(s) = \frac{N(s)}{D(s)} = \frac{(s - z_1)(s - z_2) \cdots}{(s - p_1)(s - p_2) \cdots}
+\]
+\begin{itemize}[nosep]
+    \item \textbf{Poles} ($p_i$): roots of the denominator $D(s)$. These are the values of $s$ where $G(s) \to \infty$.
+    \item \textbf{Zeros} ($z_i$): roots of the numerator $N(s)$. These are the values of $s$ where $G(s) = 0$.
+\end{itemize}
+
+\textbf{Why should you care right now?} Because the pole location tells you the time-domain behavior directly:
+\begin{itemize}[nosep]
+    \item A pole at $s = -a$ (negative real) produces $e^{-at}$---exponential decay. The more negative $a$ is, the faster the decay.
+    \item A pole at $s = +a$ (positive real) produces $e^{+at}$---exponential growth. The system is unstable.
+    \item A pair of complex poles $s = -\sigma \pm j\omega$ produces $e^{-\sigma t}\cos(\omega t)$---a decaying oscillation. (This should look familiar from the $e$ and $\pi$ section!)
+\end{itemize}
+
+In short: \textbf{poles tell you what exponential and oscillatory modes are hiding inside a system.} Every time we design a filter in this chapter, we are really choosing where to put poles and zeros. We will revisit poles and zeros more rigorously in Section~\ref{sec:system_analysis_tf}, where we connect them to stability, speed, and overall system performance.
 
 The \textbf{ramp} $t \cdot u(t)$:
 \[
@@ -116,7 +138,7 @@ The frequency spectrum has two parts:
     \item \textbf{Phase spectrum} $\angle F(j\omega)$: The time shift of each frequency component.
 \end{itemize}
 
-For filter design, we mostly care about the magnitude spectrum. Phase becomes important later when we analyze control loop stability (phase margin).
+For filter design, we mostly care about the magnitude spectrum. Phase becomes important later when we analyze control loop stability (\textit{phase margin}---how much extra phase lag the system can tolerate before it becomes unstable; see the Classical Control chapter).
 
 \begin{figure}[H]
 \centering
@@ -257,13 +279,40 @@ H(s) = \frac{s}{s + \omega_c}
 
 \textbf{Practical note:} A complementary filter (commonly used for IMU sensor fusion) is just a low-pass filter on one sensor and a high-pass filter on another, with their cutoff frequencies matched so the gains add up to 1. The accelerometer gets low-passed (trust it for slow/static orientation) and the gyroscope gets high-passed (trust it for fast rotations). Simple, elegant, and surprisingly effective.
 
+\subsubsection{Notch Filter (Band-Reject Filter)}
+
+A notch filter is the opposite of a band-pass filter: it \emph{removes} a narrow band of frequencies while leaving everything else untouched. It is your surgical tool for killing a single problematic frequency---a structural resonance, a 50/60 Hz power-line hum, or a motor cogging frequency.
+
+\textbf{Second-order notch filter:}
+\begin{equation}
+H(s) = \frac{s^2 + \omega_0^2}{s^2 + \frac{\omega_0}{Q}\,s + \omega_0^2}
+\end{equation}
+
+where $\omega_0$ is the frequency to reject and $Q$ is the quality factor (higher $Q$ = narrower notch). At $s = j\omega_0$, the numerator evaluates to zero, so the gain drops to zero at exactly $\omega_0$. The denominator keeps the filter stable and controls the width of the rejection band.
+
+\textbf{Pole-zero interpretation:} The numerator places a pair of \textit{zeros} on the imaginary axis at $s = \pm j\omega_0$---these create the ``notch'' by driving the gain to zero. The denominator places a pair of \textit{poles} slightly to the left of those zeros---these keep the filter stable and determine how quickly the gain recovers on either side. This is a textbook example of poles and zeros doing exactly what we described in Section 2.2: zeros kill frequencies, poles shape the surrounding response.
+
+\textbf{When to use:}
+\begin{itemize}[nosep]
+    \item A structural resonance is causing oscillation in your control loop (see the mecanum wheel case study earlier in this chapter).
+    \item Power-line interference (50 or 60 Hz) is corrupting a sensor signal.
+    \item A motor's cogging torque at a known frequency is visible in the velocity measurement.
+\end{itemize}
+
+\textbf{Practical tip:} Getting $\omega_0$ wrong by even a few Hz can make the notch miss the target entirely. Always identify the exact resonance frequency from an FFT of your sensor data \textit{before} designing the filter. If the resonance frequency shifts with operating conditions (e.g., with speed or load), consider an \textbf{adaptive notch filter} that tracks $\omega_0$ in real time.
+
+\textbf{Discrete-time implementation:} Like all filters in this chapter, the notch filter is implemented as a biquad (second-order section). The bilinear transform with pre-warping at $\omega_0$ converts $H(s)$ to $H(z)$ without shifting the notch frequency:
+\[
+s = \frac{\omega_0}{\tan(\omega_0 T_s / 2)} \cdot \frac{z - 1}{z + 1}.
+\]
+
 \subsubsection{Filter Type Selection and Parameter Tuning}
 
 Choosing the right filter comes down to answering three questions:
 \begin{enumerate}
-    \item \textbf{What frequencies do I want to keep?} This determines the filter type (low-pass, high-pass, band-pass).
-    \item \textbf{Where is the boundary?} This determines the cutoff frequency $f_c$.
-    \item \textbf{How sharp should the transition be?} This determines the filter order.
+    \item \textbf{What frequencies do I want to keep?} This determines the filter type (low-pass, high-pass, band-pass, or notch).
+    \item \textbf{Where is the boundary?} This determines the cutoff frequency $f_c$ (or the rejection frequency $f_0$ for a notch).
+    \item \textbf{How sharp should the transition be?} This determines the filter order (or $Q$ for a notch).
 \end{enumerate}
 
 \textbf{Rules of thumb:}

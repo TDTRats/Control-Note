@@ -22,7 +22,7 @@ These are two representations of the same system, and you can convert between th
 G(s) = C(sI - A)^{-1}B + D
 \end{equation}
 
-\textbf{Transfer function to state-space:} Not unique---many different state-space realizations can give the same transfer function. Common forms include controllable canonical form and observable canonical form.
+\textbf{Transfer function to state-space:} Not unique---many different state-space realizations can give the same transfer function. Common forms include \textit{controllable canonical form} (the denominator coefficients appear directly in the last row of $A$, making it easy to verify controllability) and \textit{observable canonical form} (the denominator coefficients appear in the last column of $A$, making observability transparent). In practice, MATLAB's \texttt{tf2ss} gives you one realization; which canonical form you use matters mainly for hand analysis.
 
 \textbf{The key difference:} Transfer functions describe the input-output behavior. State-space describes the internal dynamics. A system can have identical transfer functions but different internal structures---the state-space representation captures this extra information.
 
@@ -604,6 +604,18 @@ The \textbf{Extended Kalman Filter} handles nonlinearity by \textit{linearizing}
 \mathbf{x}_{k+1} &= f(\mathbf{x}_k, \mathbf{u}_k) + \mathbf{w}_k \quad \text{(nonlinear dynamics)} \\
 \mathbf{y}_k &= h(\mathbf{x}_k) + \mathbf{v}_k \quad \text{(nonlinear measurement)}
 \end{align}
+
+\textbf{The Jacobian matrix --- what it is and why we need it.}\;The Kalman filter's covariance propagation ($P_{k|k-1} = A P_{k-1|k-1} A^T + Q$) requires a \emph{matrix} $A$. But for a nonlinear system, there is no single matrix $A$---the ``slope'' of $f$ changes everywhere. The solution is to use the \textbf{Jacobian matrix}, which is simply the multivariable generalization of the derivative.
+
+Recall from calculus: for a scalar function $y = f(x)$, the derivative $f'(x_0)$ tells you the best linear approximation near $x_0$: $f(x) \approx f(x_0) + f'(x_0)(x - x_0)$. The Jacobian does the same thing for a \emph{vector-valued} function of \emph{multiple variables}. If $\mathbf{f}: \mathbb{R}^n \to \mathbb{R}^m$, the Jacobian is the $m \times n$ matrix of all partial derivatives:
+\[
+F = \frac{\partial \mathbf{f}}{\partial \mathbf{x}} = \begin{bmatrix}
+\frac{\partial f_1}{\partial x_1} & \cdots & \frac{\partial f_1}{\partial x_n} \\
+\vdots & \ddots & \vdots \\
+\frac{\partial f_m}{\partial x_1} & \cdots & \frac{\partial f_m}{\partial x_n}
+\end{bmatrix}.
+\]
+Each row tells you how one output component changes with respect to all inputs. Evaluated at a specific point $\mathbf{x}_0$, the Jacobian gives the best local linear approximation: $\mathbf{f}(\mathbf{x}) \approx \mathbf{f}(\mathbf{x}_0) + F(\mathbf{x} - \mathbf{x}_0)$---exactly the ``pretend the system is locally linear'' step the EKF needs.
 
 \textbf{EKF algorithm:}
 

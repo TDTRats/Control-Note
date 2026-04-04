@@ -10,7 +10,7 @@ A continuous-time transfer function $C(s)$ must be converted to a discrete-time 
 
 \subsubsection{Zero-Order Hold (ZOH)}
 
-The ZOH method assumes the input is held constant between samples (which is exactly what a DAC does). It is the most physically accurate discretization method.
+The ZOH method assumes the input is held constant between samples (which is exactly what a DAC---Digital-to-Analog Converter, the chip that turns your microcontroller's digital number into a voltage---does). It is the most physically accurate discretization method.
 
 \textbf{The idea:} Between sampling instants, the control signal is constant. We compute exactly what the continuous system would do under this piecewise-constant input.
 
@@ -103,7 +103,7 @@ that many multiplications per output sample.
 \textbf{Common FIR design methods:}
 \begin{itemize}
     \item \textbf{Window method}---truncate the ideal impulse response and apply a
-          window function (Hamming, Blackman, Kaiser) to reduce spectral leakage.
+          window function (Hamming, Blackman, Kaiser) to reduce spectral leakage (energy ``spilling'' from one frequency bin into neighboring bins due to the abrupt truncation of the impulse response).
     \item \textbf{Frequency sampling}---specify the desired magnitude response at
           DFT sample points and inverse-transform.
     \item \textbf{Parks--McClellan (Remez)}---an optimal algorithm that minimizes
@@ -152,7 +152,7 @@ discrete time using the methods we just covered (Tustin, ZOH, etc.):
           everywhere.
 \end{itemize}
 
-Note that the bilinear transform and impulse invariance methods described in the
+Note that the bilinear transform and impulse invariance (a method that samples the analog filter's impulse response at the discrete time instants, preserving the time-domain shape but risking aliasing at high frequencies) methods described in the
 previous subsection are precisely the tools used to convert these analog prototypes
 into discrete IIR filters.
 
@@ -285,7 +285,7 @@ EKF with trig functions & $O(n^3) + \text{trig}$ & $\sim$50--100~$\mu$s & Yes, b
     \item \textbf{Cascading failure:} In a cascaded architecture, if the inner loop overruns, the outer loop receives stale velocity data. The outer loop's response degrades, and disturbance rejection---the primary reason for using cascaded control---is compromised.
 \end{itemize}
 
-\textbf{Practical diagnostics.} Toggle a GPIO pin at the start and end of your ISR, and observe the pulse width on an oscilloscope. If the pulse width is close to $T_s$, you are in danger. If it ever exceeds $T_s$, you have a deadline violation that \textit{must} be fixed before tuning.
+\textbf{Practical diagnostics.} Toggle a GPIO pin (General-Purpose Input/Output---a digital pin you can set high or low from code) at the start and end of your ISR (Interrupt Service Routine---the function the hardware calls automatically at each timer tick), and observe the pulse width on an oscilloscope. If the pulse width is close to $T_s$, you are in danger. If it ever exceeds $T_s$, you have a deadline violation that \textit{must} be fixed before tuning.
 
 \textbf{What to do when computation is too slow:}
 \begin{enumerate}[nosep]

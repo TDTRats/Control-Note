@@ -131,10 +131,11 @@ y = \begin{bmatrix} 1 & 0 \end{bmatrix} \begin{bmatrix} \omega \\ i \end{bmatrix
 \textbf{The trade-off:} State-space is more powerful but more abstract. Transfer functions give you better physical intuition for SISO systems. Good engineers are fluent in both.
 
 \subsection{System Analysis via Transfer Functions}
+\label{sec:system_analysis_tf}
 
 Given a transfer function $G(s)$, we can extract a wealth of information about the system.
 
-\textbf{Poles and zeros.} Write $G(s) = \frac{N(s)}{D(s)}$. The roots of $N(s)$ are the \textbf{zeros}; the roots of $D(s)$ are the \textbf{poles}.
+\textbf{Poles and zeros revisited.} We introduced poles and zeros informally in the DSP chapter. Now let us be precise. Write $G(s) = \frac{N(s)}{D(s)}$. The roots of $N(s)$ are the \textbf{zeros}; the roots of $D(s)$ are the \textbf{poles}.
 
 \begin{itemize}
     \item \textbf{Poles determine stability.} If all poles have negative real parts (i.e., they are in the left half of the complex plane), the system is stable. If any pole has a positive real part, the system is unstable and will blow up. Poles on the imaginary axis mean the system is marginally stable (perpetual oscillation).

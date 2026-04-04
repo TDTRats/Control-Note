@@ -22,7 +22,7 @@
 G(s) = C(sI - A)^{-1}B + D
 \end{equation}
 
-\textbf{传递函数转状态空间：}转法不唯一——同一个传递函数可以对应多种状态空间实现（可控标准型、可观标准型等）。
+\textbf{传递函数转状态空间：}转法不唯一——同一个传递函数可以对应多种状态空间实现。常见的有\textit{可控标准型}（分母系数直接出现在 $A$ 的最后一行，可控性一目了然）和\textit{可观标准型}（分母系数出现在 $A$ 的最后一列，可观性一目了然）。实际工程中，MATLAB 的 \texttt{tf2ss} 可直接给出一种实现；用哪种标准型主要在手算分析时才有区别。
 
 \textbf{关键区别：}传递函数看的是输入-输出行为；状态空间看的是内部动力学。两个系统可以传递函数一模一样，内部结构完全不同——这些额外信息只有状态空间能捕捉到。
 
@@ -604,6 +604,18 @@ P[k|k] &= (I - K_k C) P[k|k-1]
 \mathbf{x}_{k+1} &= f(\mathbf{x}_k, \mathbf{u}_k) + \mathbf{w}_k \quad \text{（非线性动力学）} \\
 \mathbf{y}_k &= h(\mathbf{x}_k) + \mathbf{v}_k \quad \text{（非线性测量）}
 \end{align}
+
+\textbf{雅可比矩阵——它是什么，为什么需要它。}\;卡尔曼滤波的协方差传播公式（$P_{k|k-1} = A P_{k-1|k-1} A^T + Q$）需要一个\emph{矩阵} $A$。但非线性系统没有单一的 $A$——$f$ 的"斜率"处处不同。解决办法就是用\textbf{雅可比矩阵（Jacobian）}，它是导数在多变量情况下的自然推广。
+
+回忆高数：对于标量函数 $y = f(x)$，导数 $f'(x_0)$ 给出了在 $x_0$ 附近的最佳线性近似：$f(x) \approx f(x_0) + f'(x_0)(x - x_0)$。雅可比矩阵对\emph{多元向量值}函数做同样的事。若 $\mathbf{f}: \mathbb{R}^n \to \mathbb{R}^m$，雅可比矩阵是所有偏导数组成的 $m \times n$ 矩阵：
+\[
+F = \frac{\partial \mathbf{f}}{\partial \mathbf{x}} = \begin{bmatrix}
+\frac{\partial f_1}{\partial x_1} & \cdots & \frac{\partial f_1}{\partial x_n} \\
+\vdots & \ddots & \vdots \\
+\frac{\partial f_m}{\partial x_1} & \cdots & \frac{\partial f_m}{\partial x_n}
+\end{bmatrix}.
+\]
+每一行告诉你某个输出分量相对于所有输入的变化率。在特定点 $\mathbf{x}_0$ 处求值后，雅可比矩阵给出最佳局部线性近似：$\mathbf{f}(\mathbf{x}) \approx \mathbf{f}(\mathbf{x}_0) + F(\mathbf{x} - \mathbf{x}_0)$——这正是 EKF"假装系统局部线性"所需要的那一步。
 
 \textbf{EKF 算法：}
 

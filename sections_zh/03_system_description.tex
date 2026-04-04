@@ -131,10 +131,11 @@ y = \begin{bmatrix} 1 & 0 \end{bmatrix} \begin{bmatrix} \omega \\ i \end{bmatrix
 \textbf{权衡：}状态空间更强大，但也更抽象；传递函数对 SISO 系统直觉更好。好的工程师两手都得硬。
 
 \subsection{基于传递函数的系统分析}
+\label{sec:system_analysis_tf}
 
 拿到传递函数 $G(s)$，就能从中挖出大量信息。
 
-\textbf{极点与零点。}将 $G(s) = \frac{N(s)}{D(s)}$，$N(s)$ 的根称为\textbf{零点（Zeros）}，$D(s)$ 的根称为\textbf{极点（Poles）}。
+\textbf{极点与零点——再深入一步。}在 DSP 章节中我们已经初步认识了极点和零点。现在来更精确地定义。将 $G(s) = \frac{N(s)}{D(s)}$，$N(s)$ 的根称为\textbf{零点（Zeros）}，$D(s)$ 的根称为\textbf{极点（Poles）}。
 
 \begin{itemize}
     \item \textbf{极点决定稳定性。}若所有极点的实部均为负（即位于复平面左半部分），系统稳定。若任何极点实部为正，系统不稳定，将发散。极点在虚轴上意味着系统临界稳定（持续振荡）。

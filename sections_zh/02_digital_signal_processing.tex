@@ -71,7 +71,29 @@ $\int f(t)\,dt$ & $\frac{F(s)}{s}$ & 控制器中的积分 \\
 \[
 \mathcal{L}\{e^{-at}\} = \int_0^{\infty} e^{-at} e^{-st} \, dt = \int_0^{\infty} e^{-(s+a)t} \, dt = \frac{1}{s+a}
 \]
-这就是为什么极点在 $s = -a$ 的一阶系统，其时域响应是 $e^{-at}$——极点位置\textit{就是}衰减速率。
+注意 $F(s) = \frac{1}{s+a}$ 在 $s = -a$ 时"爆掉了"。这个让函数趋于无穷的特殊 $s$ 值叫做\textbf{极点}——下面马上正式定义。
+
+\subsubsection{初识极点与零点}
+
+我们刚才看到 $\mathcal{L}\{e^{-at}\} = \frac{1}{s+a}$，分母在 $s = -a$ 处为零，$F(s)$ 在那里趋于无穷。这个点就叫\textbf{极点（Pole）}。
+
+一般来说，对任何 $s$ 的有理函数——大多数\textbf{传递函数}（系统输出与输入在 $s$ 域中的比值，下一章会正式推导）都是有理的——我们可以写成：
+\[
+G(s) = \frac{N(s)}{D(s)} = \frac{(s - z_1)(s - z_2) \cdots}{(s - p_1)(s - p_2) \cdots}
+\]
+\begin{itemize}[nosep]
+    \item \textbf{极点}（$p_i$）：分母 $D(s)$ 的根，即 $G(s) \to \infty$ 的那些 $s$ 值。
+    \item \textbf{零点}（$z_i$）：分子 $N(s)$ 的根，即 $G(s) = 0$ 的那些 $s$ 值。
+\end{itemize}
+
+\textbf{现在为什么就要关心这个？}因为极点的位置直接告诉你时域行为：
+\begin{itemize}[nosep]
+    \item 极点在 $s = -a$（负实数）$\to$ 产生 $e^{-at}$——指数衰减。$a$ 越大，衰减越快。
+    \item 极点在 $s = +a$（正实数）$\to$ 产生 $e^{+at}$——指数增长，系统不稳定。
+    \item 一对共轭复极点 $s = -\sigma \pm j\omega$ $\to$ 产生 $e^{-\sigma t}\cos(\omega t)$——衰减振荡。（有没有觉得眼熟？和前面 $e$ 与 $\pi$ 那节说的一模一样！）
+\end{itemize}
+
+简单总结：\textbf{极点告诉你系统内部藏着哪些指数和振荡模态。}这一章里我们设计的每一个滤波器，本质上都是在选择把极点和零点放在哪里。我们将在第~\ref{sec:system_analysis_tf}~节更严格地回顾极点与零点，把它们和稳定性、响应速度以及整体系统性能联系起来。
 
 \textbf{斜坡}（Ramp） $t \cdot u(t)$：
 \[
@@ -116,7 +138,7 @@ F(j\omega) = \int_{-\infty}^{\infty} f(t) e^{-j\omega t} \, dt
     \item \textbf{相位谱}（Phase Spectrum） $\angle F(j\omega)$：每个频率分量的时间偏移。
 \end{itemize}
 
-在滤波器设计中，我们主要关心幅度谱。相位在后面分析控制回路稳定性（相位裕度）时才变得重要。
+在滤波器设计中，我们主要关心幅度谱。相位在后面分析控制回路稳定性时才变得重要（\textit{相位裕度}——系统在变得不稳定之前还能容忍多少额外相位滞后；详见经典控制章节）。
 
 \begin{figure}[H]
 \centering
@@ -257,13 +279,40 @@ H(s) = \frac{s}{s + \omega_c}
 
 \textbf{实用提示：}互补滤波器（Complementary Filter，IMU 传感器融合中常用）其实就是对一个传感器做低通、对另一个传感器做高通，两者截止频率匹配使增益之和为 1。加速度计低通处理（信任它的慢速/静态姿态信息），陀螺仪高通处理（信任它的快速旋转数据）。简单、优雅，效果出奇地好。
 
+\subsubsection{陷波滤波器（带阻滤波器，Notch Filter）}
+
+陷波滤波器是带通滤波器的反面：它\emph{去除}一个窄频带，其余频率原样通过。它是你用来"精准狙杀"单个问题频率的手术刀——结构谐振、50/60 Hz 工频干扰、电机齿槽频率等。
+
+\textbf{二阶陷波滤波器：}
+\begin{equation}
+H(s) = \frac{s^2 + \omega_0^2}{s^2 + \frac{\omega_0}{Q}\,s + \omega_0^2}
+\end{equation}
+
+其中 $\omega_0$ 是要抑制的频率，$Q$ 是品质因数（$Q$ 越大，陷波越窄）。在 $s = j\omega_0$ 处，分子为零，增益降至零——精确消除该频率。分母保证滤波器稳定，并控制阻带宽度。
+
+\textbf{极零点解读：}分子在虚轴上放置一对\textit{零点} $s = \pm j\omega_0$——它们把该频率的增益打到零，制造"陷波"。分母在这对零点的稍左方放置一对\textit{极点}——保证稳定性，并决定两侧增益恢复的速度。这是极点和零点各司其职的教科书案例：零点杀死频率，极点塑造周围响应。
+
+\textbf{适用场景：}
+\begin{itemize}[nosep]
+    \item 结构谐振导致控制环振荡（参见本章前面的麦克纳姆轮案例）。
+    \item 工频干扰（50 或 60 Hz）污染传感器信号。
+    \item 电机齿槽转矩以已知频率出现在速度测量中。
+\end{itemize}
+
+\textbf{实用提示：}$\omega_0$ 偏差几赫兹就可能导致陷波完全打偏。设计滤波器之前，\textit{务必}先对传感器数据做 FFT 找出精确的谐振频率。如果谐振频率随工况（速度、负载等）变化，可以考虑\textbf{自适应陷波滤波器}来实时跟踪 $\omega_0$。
+
+\textbf{离散实现：}与本章其他滤波器一样，陷波滤波器实现为 biquad（二阶节）。在 $\omega_0$ 处做预翘曲的双线性变换将 $H(s)$ 转为 $H(z)$，不会偏移陷波频率：
+\[
+s = \frac{\omega_0}{\tan(\omega_0 T_s / 2)} \cdot \frac{z - 1}{z + 1}.
+\]
+
 \subsubsection{滤波器类型选择与参数整定}
 
 选对滤波器，就是回答三个问题：
 \begin{enumerate}
-    \item \textbf{我想保留哪些频率？}——决定滤波器类型（低通、高通、带通）。
-    \item \textbf{边界在哪里？}——决定截止频率 $f_c$。
-    \item \textbf{过渡要多陡？}——决定滤波器阶数。
+    \item \textbf{我想保留哪些频率？}——决定滤波器类型（低通、高通、带通或陷波）。
+    \item \textbf{边界在哪里？}——决定截止频率 $f_c$（陷波器则是抑制频率 $f_0$）。
+    \item \textbf{过渡要多陡？}——决定滤波器阶数（陷波器则是 $Q$ 值）。
 \end{enumerate}
 
 \textbf{经验法则：}

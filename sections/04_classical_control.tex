@@ -129,7 +129,7 @@ With these rules, you can sketch approximate Bode plots by hand in under a minut
 
 The game of classical controller design is: given a plant $G(s)$, choose a controller $C(s)$ such that the closed-loop system $\frac{C(s)G(s)}{1+C(s)G(s)}$ meets your performance specifications.
 
-There are many approaches (root locus, frequency response shaping, pole placement), but for competition robotics, the most practical approach is:
+There are many approaches---root locus (a graphical method that plots how the system's poles move in the complex plane as you sweep the controller gain), frequency response shaping (sculpting the Bode plot to meet specs), pole placement (directly choosing where the closed-loop poles should be)---but for competition robotics, the most practical approach is:
 
 \begin{enumerate}
     \item Start with a PID controller (next section).
