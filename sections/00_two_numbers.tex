@@ -50,10 +50,7 @@ This ``constant proportional change'' is exactly what $e$ captures. Formally, $e
 \]
 In plain language: the rate of change of $e^x$ at any point equals its current value. That makes $e^x$ the natural solution to the equation ``the speed of change is proportional to the current state''---which is precisely the differential equation $\dot{x} = ax$.
 
-\begin{itemize}[nosep]
-  \item When $a > 0$: $x(t) = e^{at}$ grows exponentially---like compound interest, or an unstable system running away.
-  \item When $a < 0$: $x(t) = e^{at}$ decays exponentially---like that discharging capacitor, or a stable system returning to equilibrium.
-\end{itemize}
+When $a > 0$, $x(t) = e^{at}$ grows exponentially---like compound interest, or an unstable system running away. When $a < 0$, $x(t) = e^{at}$ decays exponentially---like that discharging capacitor, or a stable system returning to equilibrium.
 
 \begin{figure}[H]
   \centering
@@ -77,10 +74,7 @@ When a system has complex poles $\sigma \pm j\omega$, the time response is
 \[
   e^{\sigma t}\bigl(\cos\omega t + j\sin\omega t\bigr).
 \]
-\begin{itemize}[nosep]
-  \item $e^{\sigma t}$ (the $e$ part) controls the \textbf{envelope}---whether the oscillation is growing, shrinking, or staying constant.
-  \item $\cos\omega t$ (the $\pi$ part, since $\omega = 2\pi f$) controls the \textbf{frequency}---how fast the system oscillates.
-\end{itemize}
+The factor $e^{\sigma t}$ (the $e$ part) controls the \textbf{envelope}---whether the oscillation is growing, shrinking, or staying constant. The factor $\cos\omega t$ (the $\pi$ part, since $\omega = 2\pi f$) controls the \textbf{frequency}---how fast the system oscillates.
 
 \begin{figure}[H]
   \centering

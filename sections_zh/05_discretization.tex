@@ -19,6 +19,8 @@
 G(z) = \frac{1 - e^{-aT_s}}{z - e^{-aT_s}}
 \end{equation}
 
+推导思路：ZOH 离散化公式为 $G(z) = (1-z^{-1})\mathcal{Z}\{G(s)/s\}$。对于 $G(s) = a/(s+a)$，连续阶跃响应为 $y(t) = 1 - e^{-at}$；采样得 $y[n] = 1 - e^{-anT_s}$；取 Z 变换再乘以 $(1-z^{-1})$ 即得结果。
+
 \textbf{适用场景：}当你希望离散系统在采样时刻与连续系统完全吻合时。MATLAB 的 \texttt{c2d(sys, Ts, 'zoh')} 使用的就是这种方法。
 
 \textbf{缺点：}对高阶系统，转换公式可能相当复杂，通常借助软件工具完成，不适合手算。
@@ -48,6 +50,8 @@ H(z) = \frac{\omega_c T_s (z + 1)}{(2 + \omega_c T_s) z + (\omega_c T_s - 2)}
 \begin{equation}
 \omega_{\text{pre-warped}} = \frac{2}{T_s} \tan\left(\frac{\omega_c T_s}{2}\right)
 \end{equation}
+
+双线性变换将整个连续频率轴 $\omega \in [0, \infty)$ 压缩到有限弧段 $\omega_d \in [0, \pi/T_s)$ 上，高频被严重压缩。映射关系为 $\omega = \frac{2}{T_s}\tan\frac{\omega_d T_s}{2}$。预翘曲就是反过来：给双线性变换喂一个"拉伸"后的频率，使目标频率 $\omega_c$ 在压缩后精确落到正确位置。
 
 在连续设计中用 $\omega_{\text{pre-warped}}$ 替换 $\omega_c$，再应用双线性变换。
 

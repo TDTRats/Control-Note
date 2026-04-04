@@ -52,7 +52,11 @@ J \frac{d\omega}{dt} = \frac{K_t}{R}(V - K_e \omega) - b\omega - \tau_{\text{loa
 
 对微分方程取拉普拉斯变换（假设零初始条件），即可得到\textbf{传递函数（Transfer Function）}：输出与输入在 $s$ 域中的比值。
 
-对于简化后的直流有刷电机：
+对于简化后的直流有刷电机，下面简要推导。从简化方程（$L \approx 0$）出发，欧姆定律给出 $I = (V - K_e \omega)/R$。代入机械方程 $J\frac{d\omega}{dt} = K_t I - b\omega$：
+\[
+J\frac{d\omega}{dt} = \frac{K_t}{R}(V - K_e \omega) - b\omega
+\]
+取拉普拉斯变换（零初始条件）：$(Js + b + K_t K_e / R)\,\Omega(s) = (K_t / R)\,V(s)$，于是：
 \begin{equation}
 G(s) = \frac{\Omega(s)}{V(s)} = \frac{K_t / R}{Js + (b + K_t K_e / R)}
 \end{equation}
@@ -64,21 +68,9 @@ G(s) = \frac{K}{\tau s + 1}
 
 其中 $K$ 是直流增益（每伏特对应的稳态转速），$\tau$ 是时间常数（电机达到稳态的速度）。
 
-\textbf{传递函数的优点：}
-\begin{itemize}
-    \item 形式紧凑——一个分式描述整个系统。
-    \item 级联系统只需相乘：$G_{\text{total}}(s) = G_1(s) \cdot G_2(s)$。
-    \item 稳定性分析直观：检查分母的根（极点）即可。
-    \item 令 $s = j\omega$ 即可得到频率响应。
-\end{itemize}
+\textbf{传递函数的优点。}\;形式紧凑——一个分式描述整个系统。级联系统只需相乘：$G_{\text{total}}(s) = G_1(s) \cdot G_2(s)$。稳定性分析直观：检查分母的根（极点）即可。令 $s = j\omega$ 即可得到频率响应。
 
-\textbf{传递函数的局限：}
-\begin{itemize}
-    \item 仅适用于线性时不变（LTI）系统。
-    \item 假设零初始条件。
-    \item 天然是 SISO 的——推广到 MIMO 需要传递函数矩阵，处理起来很繁琐。
-    \item 隐藏了系统的内部状态。
-\end{itemize}
+\textbf{传递函数的局限。}\;仅适用于线性时不变（LTI）系统，且假设零初始条件。天然是 SISO 的——推广到 MIMO 需要传递函数矩阵，处理起来很繁琐。最关键的是，它隐藏了系统的内部状态。正是这最后一点，催生了状态空间表示法。
 
 \subsubsection{状态空间表示（State-Space Representation）}
 
@@ -183,6 +175,8 @@ y(t) = 1 - \frac{e^{-\zeta\omega_n t}}{\sqrt{1 - \zeta^2}} \sin\left(\omega_d t 
 
 其中 $\omega_d$ 是\textbf{阻尼自然频率（Damped Natural Frequency）}——系统实际振荡的频率（始终小于 $\omega_n$）。
 
+推导思路：对阶跃响应取拉普拉斯变换得 $Y(s) = \frac{\omega_n^2}{s(s^2 + 2\zeta\omega_n s + \omega_n^2)}$。对复极点 $s = -\zeta\omega_n \pm j\omega_d$（其中 $\omega_d = \omega_n\sqrt{1-\zeta^2}$）做部分分式展开再取逆拉普拉斯变换即得结果。超调发生在第一个峰值 $t_p = \pi/\omega_d$；将其代入 $y(t)$ 即得 $M_p$。
+
 由此可推导出各性能指标的解析表达式：
 \begin{align}
 \text{超调量：} \quad M_p &= e^{-\pi\zeta / \sqrt{1-\zeta^2}} \times 100\% \\
@@ -219,6 +213,8 @@ m\ddot{x} + b\dot{x} + kx = F(t)
 \]
 
 传递函数：$G(s) = \frac{1}{ms^2 + bs + k} = \frac{1/m}{s^2 + \frac{b}{m}s + \frac{k}{m}}$
+
+由系数匹配得到：$ms^2 + bs + k = m(s^2 + 2\zeta\omega_n s + \omega_n^2)$ 给出 $\omega_n^2 = k/m$ 和 $2\zeta\omega_n = b/m$，故 $\zeta = b/(2m\omega_n) = b/(2\sqrt{km})$。
 
 自然频率：$\omega_n = \sqrt{k/m}$。\quad 阻尼比：$\zeta = \frac{b}{2\sqrt{km}}$。
 

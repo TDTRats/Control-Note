@@ -22,6 +22,8 @@
 \end{enumerate}
 
 从设定值 $R$ 到输出 $Y$ 的闭环传递函数（Closed-loop Transfer Function）为：
+
+从框图出发：误差 $E(s) = R(s) - Y(s)$，控制器输出 $U(s) = C(s)E(s)$，被控对象输出 $Y(s) = G(s)U(s)$。组合得 $Y = GC(R - Y)$，整理：$Y(1 + GC) = GCR$，故：
 \begin{equation}
 \frac{Y(s)}{R(s)} = \frac{C(s)G(s)}{1 + C(s)G(s)}
 \end{equation}
@@ -95,25 +97,11 @@
 
 你可以从开环传递函数 $C(s)G(s)$ 的\textbf{Bode图（Bode Plot）}上直接读取这两个裕度。
 
-\textbf{什么是Bode图？}Bode图是两张上下叠放的图，横轴都是频率（对数坐标）：
-\begin{itemize}
-    \item \textbf{上图：幅频图。}显示增益 $|G(j\omega)|$（dB）与频率的关系。0 dB 表示增益为1（输出等于输入）。+20 dB 表示增益为10。-20 dB 表示增益为0.1。换算公式：$\text{dB} = 20 \log_{10}(|G|)$。
-    \item \textbf{下图：相频图。}显示相角 $\angle G(j\omega)$（度）与频率的关系。相位 $-90°$ 意味着输出比输入滞后四分之一个周期。
-\end{itemize}
+\textbf{什么是Bode图？}Bode图是两张上下叠放的图，横轴都是频率（对数坐标）。上图是\textbf{幅频图}，显示增益 $|G(j\omega)|$（dB）与频率的关系——0 dB 表示增益为1（输出等于输入），+20 dB 表示增益为10，-20 dB 表示增益为0.1，换算公式：$\text{dB} = 20 \log_{10}(|G|)$。下图是\textbf{相频图}，显示相角 $\angle G(j\omega)$（度）与频率的关系——相位 $-90°$ 意味着输出比输入滞后四分之一个周期。
 
-\textbf{如何从Bode图读取稳定裕度：}
-\begin{itemize}
-    \item \textbf{相位穿越频率（Phase crossover frequency）} ($\omega_{pc}$)：相位穿越 $-180°$ 的频率。在此频率读取幅值——幅值曲线到0 dB的距离就是\textbf{增益裕度}。如果在 $\omega_{pc}$ 处幅值低于0 dB，系统稳定，增益裕度为正。
-    \item \textbf{增益穿越频率（Gain crossover frequency）} ($\omega_{gc}$)：幅值穿越0 dB的频率。在此频率读取相位——相位曲线到 $-180°$ 的距离就是\textbf{相位裕度}。如果在 $\omega_{gc}$ 处相位高于 $-180°$，系统稳定，相位裕度为正。
-\end{itemize}
+\textbf{如何从Bode图读取稳定裕度：}首先找到\textbf{相位穿越频率} ($\omega_{pc}$)，即相位穿越 $-180°$ 的频率——在此频率读取幅值，幅值曲线到0 dB的距离就是\textbf{增益裕度}；如果在 $\omega_{pc}$ 处幅值低于0 dB，系统稳定，增益裕度为正。然后找到\textbf{增益穿越频率} ($\omega_{gc}$)，即幅值穿越0 dB的频率——在此频率读取相位，相位曲线到 $-180°$ 的距离就是\textbf{相位裕度}；如果在 $\omega_{gc}$ 处相位高于 $-180°$，系统稳定，相位裕度为正。
 
-\textbf{Bode图速绘技巧：}对于传递函数 $G(s)$：
-\begin{itemize}
-    \item 位于 $s = -a$ 处的极点（pole）贡献从 $\omega = a$ 开始的 $-20$ dB/decade 衰减，以及以 $\omega = a$ 为中心的 $-45°$/decade 相位变化。
-    \item 位于 $s = -a$ 处的零点（zero）贡献 $+20$ dB/decade 和 $+45°$/decade（与极点相反）。
-    \item 积分器（$1/s$）在所有频率贡献 $-20$ dB/decade，以及恒定的 $-90°$ 相位。
-    \item 直流增益决定幅频图的纵向偏移。
-\end{itemize}
+\textbf{Bode图速绘技巧：}对于传递函数 $G(s)$：位于 $s = -a$ 处的极点（pole）贡献从 $\omega = a$ 开始的 $-20$ dB/decade 衰减，以及以 $\omega = a$ 为中心的 $-45°$/decade 相位变化；位于 $s = -a$ 处的零点（zero）贡献 $+20$ dB/decade 和 $+45°$/decade（与极点相反）；积分器（$1/s$）在所有频率贡献 $-20$ dB/decade，以及恒定的 $-90°$ 相位；直流增益决定幅频图的纵向偏移。
 
 掌握这些规则，你可以在一分钟内手绘近似的Bode图——在调试时需要快速验证思路时非常管用。
 
@@ -273,6 +261,8 @@ u[n] = u[n-1] + \Delta u[n]
 
 教科书上的PID有几个众所周知的问题。以下是每个竞赛机器人都应该使用的修复方案。
 
+这些问题并非彼此独立——饱和、冲击和噪声放大都源于同一根源：PID 的三个项在执行器极限或高频处表现不佳。
+
 \textbf{1. 积分饱和与抗积分饱和（Integral Windup and Anti-windup）}
 
 \textit{问题：}执行器饱和了（电机已经到最大电压），积分项还在拼命攒误差。等误差方向反过来，积分值已经攒得巨大，要很久才能"退饱和"，于是大幅超调。
@@ -290,6 +280,8 @@ u[n] = u[n-1] + \Delta u[n]
     integral += (error + (output - output_raw) / Ki) * dt
 \end{verbatim}
 
+驯服了积分之后，下一个隐患出现在设定值突变时。
+
 \textbf{2. 微分冲击（Derivative Kick）}
 
 \textit{问题：}设定值突变（阶跃指令），误差 $e = r - y$ 瞬间跳一大截。微分项把它当成无限大的变化率，输出直接飙出一个巨大尖峰。
@@ -301,6 +293,8 @@ u[n] = u[n-1] + \Delta u[n]
 
 测量值变化是平滑的（电机又不会瞬移），自然不会有冲击。
 
+对测量值求导而非误差解决了冲击问题，但引入了一个更隐蔽的问题。
+
 \textbf{3. 微分噪声放大（Derivative Noise Amplification）}
 
 \textit{问题：}微分放大高频噪声。测量值一有噪声，微分项的输出就剧烈抖动。
@@ -311,6 +305,8 @@ D(s) = \frac{K_d s}{1 + \frac{K_d}{N K_p} s}
 \end{equation}
 
 在代码中，这是对微分项的一阶低通滤波，$N$（通常为8--20）控制滤波器截止频率。
+
+前三个修复让 PID 变得鲁棒，最后一个让它变得灵活。
 
 \textbf{4. 设定值加权（Setpoint Weighting）}
 
@@ -588,6 +584,8 @@ PID & $0.6 K_u$ & $1.2 K_u / T_u$ & $0.075 K_u T_u$ \\
     \begin{itemize}[nosep]
         \item $K$ = （终值）/（阶跃幅值）
         \item $M_p$ = 百分比超调量 $\Rightarrow$ $\zeta = \frac{-\ln(M_p/100)}{\sqrt{\pi^2 + \ln^2(M_p/100)}}$
+
+        由超调公式 $M_p = e^{-\pi\zeta/\sqrt{1-\zeta^2}}$ 两边取对数得 $\ln(M_p/100) = -\pi\zeta/\sqrt{1-\zeta^2}$，平方两边并解出 $\zeta$ 即得。
         \item $t_p$ = 第一个峰值出现的时间 $\Rightarrow$ $\omega_n = \frac{\pi}{t_p \sqrt{1 - \zeta^2}}$
     \end{itemize}
 \end{enumerate}
@@ -756,19 +754,9 @@ u(t) = K_p e(t) + K_i \int_0^t e(\tau)\,d\tau + K_d \frac{de(t)}{dt}, \qquad e(t
 u = \text{PID}_{\text{内环}}\bigl(\omega_{\text{cmd}} - \omega\bigr)
 \]
 
-\textbf{优点：}
-\begin{itemize}[nosep]
-    \item 每个回路只处理一层动态，使整定变得简单（先内环，后外环）。
-    \item 内环在扰动传递到外环之前便将其抑制，抗扰动性能显著提升。
-    \item 天然的限幅保护：外环输出有界的速度指令，避免突然的大力矩。
-\end{itemize}
+\textbf{优点：}每个回路只处理一层动态，使整定变得简单（先内环，后外环）。内环在扰动传递到外环之前便将其抑制，抗扰动性能显著提升。此外，外环输出有界的速度指令，天然起到限幅保护作用，避免突然的大力矩。
 
-\textbf{设计准则：}
-\begin{itemize}[nosep]
-    \item 内环带宽应为外环的 5--10 倍。
-    \item 从外环的视角看，内环应表现为一个简单的一阶系统（即整定良好、响应快、无超调）。
-    \item 由内而外整定：先在外环断开的条件下稳定并优化内环，再闭合外环。
-\end{itemize}
+\textbf{设计准则：}内环带宽应为外环的 5--10 倍。从外环的视角看，内环应表现为一个简单的一阶系统（即整定良好、响应快、无超调）。整定时由内而外：先在外环断开的条件下稳定并优化内环，再闭合外环。
 
 \subsubsection{架构三：并联串级 PID（多轴协同）}
 

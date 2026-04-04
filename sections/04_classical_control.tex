@@ -21,7 +21,8 @@ Mathematically, a basic feedback loop looks like this:
     \item Measure $y(t)$ and go back to step 1.
 \end{enumerate}
 
-The closed-loop transfer function from setpoint $R$ to output $Y$ is:
+The closed-loop transfer function from setpoint $R$ to output $Y$ is derived as follows.
+From the block diagram: the error is $E(s) = R(s) - Y(s)$, the controller output is $U(s) = C(s)E(s)$, and the plant output is $Y(s) = G(s)U(s)$. Combining: $Y = GCE = GC(R - Y)$, so $Y + GCY = GCR$, giving $Y(1 + GC) = GCR$, hence:
 \begin{equation}
 \frac{Y(s)}{R(s)} = \frac{C(s)G(s)}{1 + C(s)G(s)}
 \end{equation}
@@ -95,25 +96,11 @@ Even if a system is stable, we want to know \textit{how stable} it is---how clos
 
 You can read both margins from a \textbf{Bode plot} of the open-loop transfer function $C(s)G(s)$.
 
-\textbf{What is a Bode plot?} A Bode plot is two graphs stacked vertically, both with frequency on the horizontal axis (log scale):
-\begin{itemize}
-    \item \textbf{Top: Magnitude plot.} Shows the gain $|G(j\omega)|$ in decibels (dB) vs.\ frequency. $0$ dB means gain $= 1$ (output equals input). $+20$ dB means gain $= 10$. $-20$ dB means gain $= 0.1$. The conversion: $\text{dB} = 20 \log_{10}(|G|)$.
-    \item \textbf{Bottom: Phase plot.} Shows the phase angle $\angle G(j\omega)$ in degrees vs.\ frequency. A phase of $-90$\textdegree{} means the output lags the input by a quarter cycle.
-\end{itemize}
+\textbf{What is a Bode plot?} A Bode plot is two graphs stacked vertically, both with frequency on the horizontal axis (log scale). The \textbf{top graph (magnitude)} shows the gain $|G(j\omega)|$ in decibels (dB) vs.\ frequency, where 0 dB means unity gain, $+20$ dB means gain $= 10$, and $-20$ dB means gain $= 0.1$ (conversion: $\text{dB} = 20 \log_{10}(|G|)$). The \textbf{bottom graph (phase)} shows the phase angle $\angle G(j\omega)$ in degrees vs.\ frequency; a phase of $-90$\textdegree{} means the output lags the input by a quarter cycle.
 
-\textbf{How to read stability margins from the Bode plot:}
-\begin{itemize}
-    \item \textbf{Phase crossover frequency} ($\omega_{pc}$): where the phase crosses $-180$\textdegree. At this frequency, read the magnitude --- the distance from the magnitude curve to 0 dB is your \textbf{gain margin}. If the magnitude is below 0 dB at $\omega_{pc}$, the system is stable and the gain margin is positive.
-    \item \textbf{Gain crossover frequency} ($\omega_{gc}$): where the magnitude crosses 0 dB. At this frequency, read the phase --- the distance from the phase curve to $-180$\textdegree{} is your \textbf{phase margin}. If the phase is above $-180$\textdegree{} at $\omega_{gc}$, the system is stable and the phase margin is positive.
-\end{itemize}
+With magnitude and phase in hand, stability margins can be read directly from these two curves. Find the \textbf{phase crossover frequency} $\omega_{pc}$ where the phase crosses $-180$\textdegree, and read the magnitude there---the distance from the magnitude curve to 0 dB is your \textbf{gain margin}. Then find the \textbf{gain crossover frequency} $\omega_{gc}$ where the magnitude crosses 0 dB, and read the phase there---the distance from the phase curve to $-180$\textdegree{} is your \textbf{phase margin}. If both margins are positive, the system is stable.
 
-\textbf{Bode plot sketching shortcuts:} For a transfer function $G(s)$:
-\begin{itemize}
-    \item Each pole at $s = -a$ contributes $-20$ dB/decade rolloff starting at $\omega = a$, and $-45$\textdegree{}/decade phase change centered at $\omega = a$.
-    \item Each zero at $s = -a$ contributes $+20$ dB/decade and $+45$\textdegree{}/decade (opposite of a pole).
-    \item An integrator ($1/s$) contributes $-20$ dB/decade at all frequencies and a constant $-90$\textdegree{} phase.
-    \item The DC gain sets the vertical offset of the magnitude plot.
-\end{itemize}
+For hand analysis, a few asymptotic rules let you sketch the Bode plot without a computer. Each pole at $s = -a$ contributes $-20$ dB/decade rolloff starting at $\omega = a$ and $-45$\textdegree{}/decade phase change centered there. Each zero does the opposite ($+20$ dB/decade and $+45$\textdegree{}/decade). An integrator ($1/s$) contributes $-20$ dB/decade at all frequencies and a constant $-90$\textdegree{} phase. The DC gain sets the vertical offset of the magnitude plot.
 
 With these rules, you can sketch approximate Bode plots by hand in under a minute---invaluable during debugging when you need a quick sanity check.
 
@@ -271,7 +258,7 @@ The incremental form has a practical advantage: if your controller resets or gli
 
 \subsubsection{Improved PID Controllers}
 
-The textbook PID has several well-known problems. Here are the fixes that every competition robot should use.
+The textbook PID has several well-known problems. They are not independent---windup, kick, and noise amplification all stem from the same root cause: the three PID terms behave poorly at actuator limits or at high frequencies. Here are the fixes that every competition robot should use.
 
 \textbf{1. Integral windup and anti-windup}
 
@@ -292,6 +279,8 @@ The textbook PID has several well-known problems. Here are the fixes that every 
 
 \textbf{2. Derivative kick}
 
+Having tamed the integral, the next hazard appears when the setpoint changes abruptly.
+
 \textit{The problem:} When the setpoint changes suddenly (step command), the error $e = r - y$ jumps instantaneously. The derivative term sees this as an infinite rate of change and produces a huge spike (``kick'') in the output.
 
 \textit{The fix:} Differentiate the \textit{measurement} instead of the error:
@@ -303,6 +292,8 @@ The measurement changes smoothly (your motor cannot teleport), so there is no ki
 
 \textbf{3. Derivative noise amplification}
 
+Differentiating measurement instead of error solves the kick, but introduces a subtler problem.
+
 \textit{The problem:} Differentiation amplifies high-frequency noise. If your measurement is noisy, the derivative term will produce wildly fluctuating outputs.
 
 \textit{The fix:} Low-pass filter the derivative:
@@ -313,6 +304,8 @@ D(s) = \frac{K_d s}{1 + \frac{K_d}{N K_p} s}
 In code, this is a first-order low-pass filter on the derivative term, with $N$ (typically 8--20) controlling the filter cutoff.
 
 \textbf{4. Setpoint weighting}
+
+The previous three fixes made the PID robust. This last one makes it flexible.
 
 Sometimes you want the P and D terms to respond differently to setpoint changes vs.\ disturbances. Setpoint weighting introduces parameters $b$ and $c$:
 \begin{equation}
@@ -587,7 +580,8 @@ The simplest sysid technique. Apply a step input and record the output.
     \item Read off:
     \begin{itemize}[nosep]
         \item $K$ = (final value) / (step amplitude)
-        \item $M_p$ = percent overshoot $\Rightarrow$ $\zeta = \frac{-\ln(M_p/100)}{\sqrt{\pi^2 + \ln^2(M_p/100)}}$
+        \item $M_p$ = percent overshoot $\Rightarrow$ $\zeta = \frac{-\ln(M_p/100)}{\sqrt{\pi^2 + \ln^2(M_p/100)}}$.
+        This is obtained by inverting the overshoot formula $M_p = e^{-\pi\zeta/\sqrt{1-\zeta^2}}$: take the logarithm of both sides, $\ln(M_p/100) = -\pi\zeta/\sqrt{1-\zeta^2}$, square both sides, and solve for $\zeta$.
         \item $t_p$ = time to first peak $\Rightarrow$ $\omega_n = \frac{\pi}{t_p \sqrt{1 - \zeta^2}}$
     \end{itemize}
 \end{enumerate}
@@ -756,19 +750,9 @@ Two nested loops per axis: the outer loop generates a velocity (or current) setp
 u = \text{PID}_{\text{inner}}\bigl(\omega_{\text{cmd}} - \omega\bigr)
 \]
 
-\textbf{Advantages:}
-\begin{itemize}[nosep]
-    \item Each loop handles a single dynamic layer, making tuning straightforward (inner first, then outer).
-    \item The inner loop rejects disturbances before they reach the outer loop---disturbance rejection is dramatically faster.
-    \item Natural saturation enforcement: the outer loop outputs a bounded velocity command, preventing sudden large torques.
-\end{itemize}
+The main advantage is separation of concerns: each loop handles a single dynamic layer, making tuning straightforward. The inner loop intercepts disturbances before they propagate to the outer loop, dramatically improving disturbance rejection. And because the outer loop's output is a bounded velocity command (not a raw voltage), saturation handling comes for free.
 
-\textbf{Design rules:}
-\begin{itemize}[nosep]
-    \item The inner loop bandwidth should be 5--10$\times$ that of the outer loop.
-    \item From the outer loop's perspective, the inner loop should behave like a simple first-order system (i.e., well-tuned, fast, no overshoot).
-    \item Tune from inside out: stabilize and optimize the inner loop with the outer loop disabled, then close the outer loop.
-\end{itemize}
+These advantages translate into three concrete design rules. First, the inner loop bandwidth should be 5--10$\times$ that of the outer loop, so the outer loop ``sees'' the inner loop as an obedient, fast actuator. Second, from the outer loop's perspective, the inner loop should behave like a simple first-order system---well-tuned, fast, no overshoot. Third, always tune from inside out: stabilize the inner loop with the outer loop disabled, then close the outer loop.
 
 \subsubsection{Architecture 3: Parallel-Cascaded PID (Multi-Axis)}
 

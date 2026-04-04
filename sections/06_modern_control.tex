@@ -22,6 +22,8 @@ These are two representations of the same system, and you can convert between th
 G(s) = C(sI - A)^{-1}B + D
 \end{equation}
 
+Taking the Laplace transform of $\dot{\mathbf{x}} = A\mathbf{x} + B\mathbf{u}$ (with zero initial conditions) gives $s\mathbf{X}(s) = A\mathbf{X}(s) + B\mathbf{U}(s)$, hence $\mathbf{X}(s) = (sI - A)^{-1}B\mathbf{U}(s)$. Substituting into $\mathbf{Y}(s) = C\mathbf{X}(s) + D\mathbf{U}(s)$ yields $G(s) = C(sI-A)^{-1}B + D$.
+
 \textbf{Transfer function to state-space:} Not unique---many different state-space realizations can give the same transfer function. Common forms include \textit{controllable canonical form} (the denominator coefficients appear directly in the last row of $A$, making it easy to verify controllability) and \textit{observable canonical form} (the denominator coefficients appear in the last column of $A$, making observability transparent). In practice, MATLAB's \texttt{tf2ss} gives you one realization; which canonical form you use matters mainly for hand analysis.
 
 \textbf{The key difference:} Transfer functions describe the input-output behavior. State-space describes the internal dynamics. A system can have identical transfer functions but different internal structures---the state-space representation captures this extra information.
@@ -143,6 +145,8 @@ For linear systems, the Lyapunov equation is:
 A^T P + PA = -Q
 \end{equation}
 
+Choose $V(\mathbf{x}) = \mathbf{x}^T P \mathbf{x}$ as a candidate Lyapunov function. Its time derivative along trajectories of $\dot{\mathbf{x}} = A\mathbf{x}$ is $\dot{V} = \dot{\mathbf{x}}^T P \mathbf{x} + \mathbf{x}^T P \dot{\mathbf{x}} = \mathbf{x}^T(A^T P + PA)\mathbf{x}$. For $\dot{V} < 0$ (stability), we need $A^T P + PA = -Q$ for some positive definite $Q$.
+
 If $Q > 0$ and the solution $P > 0$, the system is stable. MATLAB's \texttt{lyap()} solves this directly.
 
 \subsection{Controller Design via State-Space}
@@ -241,6 +245,9 @@ Here comes the magic: because the dynamics are linear and the cost is quadratic,
 \]
 
 Solving gives:
+
+Expand the Bellman equation: $V_k(\mathbf{x}) = \min_{\mathbf{u}}[\mathbf{x}^T Q \mathbf{x} + \mathbf{u}^T R \mathbf{u} + (A\mathbf{x}+B\mathbf{u})^T P_{k+1}(A\mathbf{x}+B\mathbf{u})]$. Differentiate the bracketed expression with respect to $\mathbf{u}$ and set to zero: $2R\mathbf{u} + 2B^T P_{k+1}(A\mathbf{x} + B\mathbf{u}) = 0$, which gives $\mathbf{u}^* = -(R + B^T P_{k+1} B)^{-1} B^T P_{k+1} A \mathbf{x}$. Substituting back yields the Riccati recursion for $P_k$.
+
 \begin{align}
 \mathbf{u}_k^* &= -\underbrace{(R + B^T P_{k+1} B)^{-1} B^T P_{k+1} A}_{K_k} \, \mathbf{x}_k \\
 P_k &= Q + A^T P_{k+1} A - A^T P_{k+1} B (R + B^T P_{k+1} B)^{-1} B^T P_{k+1} A
@@ -274,10 +281,7 @@ With the Bellman/DP framework fresh in mind, LQR is simply the steady-state solu
 J = \int_0^{\infty} \left( \mathbf{x}^T Q \mathbf{x} + \mathbf{u}^T R \mathbf{u} \right) dt
 \end{equation}
 
-\begin{itemize}
-    \item $Q$: penalizes state deviations (large $Q$ = aggressive tracking, fast response).
-    \item $R$: penalizes control effort (large $R$ = gentle inputs, energy saving).
-\end{itemize}
+The matrix $Q$ penalizes state deviations---larger $Q$ means more aggressive tracking and faster response---while $R$ penalizes control effort---larger $R$ means gentler inputs and energy saving. The balance between $Q$ and $R$ is the fundamental design knob of LQR.
 
 The optimal state feedback gain is:
 \begin{equation}
@@ -293,21 +297,9 @@ Do not solve this by hand. Use \texttt{lqr(A, B, Q, R)} in MATLAB or \texttt{sci
 
 \textbf{What is the Riccati equation actually computing?} The matrix $P$ represents the \textbf{optimal cost-to-go}: $P_{ij}$ tells you how much ``future cost'' is associated with the interaction between states $i$ and $j$. Think of it as a map of ``how expensive is it to be in each state?'' States that are hard to control (require lots of effort to bring back to zero) get large entries in $P$. The optimal gain $K = R^{-1}B^T P$ then says: ``Apply control effort proportional to how costly each state is.'' Expensive states get corrected aggressively; cheap states get gentle treatment.
 
-\textbf{Tuning LQR:} The art is in choosing $Q$ and $R$.
-\begin{itemize}
-    \item Start with $Q = I$ (identity matrix) and $R = \rho I$ where $\rho$ is a scalar.
-    \item Small $\rho$: aggressive, fast, uses lots of actuator effort.
-    \item Large $\rho$: conservative, slow, gentle on actuators.
-    \item To penalize specific states more, increase the corresponding diagonal elements of $Q$. For example, if you care more about position than velocity, make $Q_{11} > Q_{22}$.
-\end{itemize}
+\textbf{Tuning LQR.}\;The art is in choosing $Q$ and $R$. Start with $Q = I$ (identity matrix) and $R = \rho I$ where $\rho$ is a single scalar. A small $\rho$ gives aggressive, fast control that uses lots of actuator effort; a large $\rho$ is conservative and gentle on actuators. To penalize specific states more, increase the corresponding diagonal elements of $Q$---for example, if you care more about position than velocity, make $Q_{11} > Q_{22}$.
 
-\textbf{Why LQR is great for competitions:}
-\begin{itemize}
-    \item Guaranteed stability (if the system is controllable).
-    \item Guaranteed robustness margins (at least 6 dB gain margin and 60\textdegree{} phase margin for SISO systems).
-    \item Handles MIMO systems effortlessly.
-    \item The $Q/R$ tuning is more intuitive than PID's three gains for multi-axis systems.
-\end{itemize}
+\textbf{Why LQR is great for competitions.}\;It provides guaranteed stability (for controllable systems) and guaranteed robustness margins---at least 6 dB gain margin and 60\textdegree{} phase margin for SISO systems. It handles MIMO systems effortlessly, and the $Q/R$ tuning is more intuitive than PID's three gains for multi-axis systems.
 
 \textbf{Example:} Balancing a two-wheeled robot. The state is $\mathbf{x} = [\theta, \dot{\theta}, x, \dot{x}]^T$ (tilt angle, tilt rate, position, velocity). PID would need multiple nested loops; LQR handles it with a single $K$ matrix.
 
@@ -387,12 +379,7 @@ MPC is the most powerful and flexible controller in the modern control toolbox. 
 \textbf{The catch:} MPC requires solving an optimization problem at every time step. For linear systems with quadratic costs (linear MPC), this is a quadratic program (QP) that can be solved efficiently. For nonlinear systems (nonlinear MPC), it is much harder.
 
 \textbf{Practical considerations for competition robots:}
-\begin{itemize}
-    \item For simple systems (chassis velocity control), PID or LQR is usually sufficient. MPC is overkill.
-    \item For trajectory tracking with constraints (autonomous navigation, robotic arms), MPC is worth the effort.
-    \item Libraries like OSQP, qpOASES, or acados can solve QPs fast enough for real-time embedded use.
-    \item If real-time computation is too expensive, consider \textit{explicit MPC}---precomputing the solution offline as a lookup table.
-\end{itemize}
+For simple systems (chassis velocity control), PID or LQR is usually sufficient---MPC is overkill. But for trajectory tracking with constraints (autonomous navigation, robotic arms), MPC is worth the additional implementation effort. Libraries like OSQP, qpOASES, and acados can solve the QP fast enough for real-time embedded use. When even that is too expensive, \textit{explicit MPC} precomputes the solution offline as a lookup table indexed by the current state.
 
 \begin{figure}[H]
 \centering
@@ -498,6 +485,8 @@ The estimation error $\mathbf{e} = \mathbf{x} - \hat{\mathbf{x}}$ evolves as:
 \begin{equation}
 \dot{\mathbf{e}} = (A - LC)\mathbf{e}
 \end{equation}
+
+Subtract the observer equation $\dot{\hat{\mathbf{x}}} = A\hat{\mathbf{x}} + B\mathbf{u} + L(\mathbf{y} - C\hat{\mathbf{x}})$ from the true system $\dot{\mathbf{x}} = A\mathbf{x} + B\mathbf{u}$. The $B\mathbf{u}$ terms cancel, and substituting $\mathbf{y} = C\mathbf{x}$ gives $\dot{\mathbf{e}} = A\mathbf{e} - LC\mathbf{e} = (A - LC)\mathbf{e}$.
 
 If we choose $L$ such that all eigenvalues of $(A - LC)$ have negative real parts, the estimation error decays to zero. The observer ``catches up'' to the true state.
 

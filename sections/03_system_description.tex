@@ -52,6 +52,12 @@ This is a first-order ODE relating input voltage $V$ to output speed $\omega$. N
 
 Take the Laplace transform of the differential equation (assuming zero initial conditions), and you get a \textbf{transfer function}: the ratio of output to input in the $s$-domain.
 
+Let us sketch the derivation. From the simplified equation ($L \approx 0$), Ohm's law gives $I = (V - K_e \omega)/R$. Substituting into the mechanical equation $J\frac{d\omega}{dt} = K_t I - b\omega$:
+\[
+J\frac{d\omega}{dt} = \frac{K_t}{R}(V - K_e \omega) - b\omega
+\]
+Taking the Laplace transform (zero initial conditions): $(Js + b + K_t K_e / R)\,\Omega(s) = (K_t / R)\,V(s)$, hence:
+
 For our simplified DC brushed motor:
 \begin{equation}
 G(s) = \frac{\Omega(s)}{V(s)} = \frac{K_t / R}{Js + (b + K_t K_e / R)}
@@ -64,21 +70,9 @@ G(s) = \frac{K}{\tau s + 1}
 
 where $K$ is the DC gain (steady-state speed per volt) and $\tau$ is the time constant (how fast the motor reaches steady state).
 
-\textbf{Why transfer functions are great:}
-\begin{itemize}
-    \item They are compact---one fraction describes the entire system.
-    \item Cascading systems is just multiplication: $G_{\text{total}}(s) = G_1(s) \cdot G_2(s)$.
-    \item Stability analysis is straightforward: check the roots of the denominator (poles).
-    \item Frequency response is obtained by substituting $s = j\omega$.
-\end{itemize}
+\textbf{Why transfer functions are great.}\;They are compact---one fraction describes the entire system. Cascading systems is just multiplication: $G_{\text{total}}(s) = G_1(s) \cdot G_2(s)$. Stability analysis is straightforward: check the roots of the denominator (poles). And the frequency response is obtained by simply substituting $s = j\omega$.
 
-\textbf{Why transfer functions are limited:}
-\begin{itemize}
-    \item They only work for linear, time-invariant (LTI) systems.
-    \item They assume zero initial conditions.
-    \item They are naturally SISO---extending to MIMO requires transfer function matrices, which get unwieldy.
-    \item They hide the internal states of the system.
-\end{itemize}
+\textbf{Why transfer functions are limited.}\;They only work for linear, time-invariant (LTI) systems. They assume zero initial conditions. They are naturally SISO---extending to MIMO requires transfer function matrices, which get unwieldy. And they hide the internal states of the system. This last point is why we need the state-space representation.
 
 \subsubsection{State-Space Representation}
 
@@ -183,6 +177,8 @@ y(t) = 1 - \frac{e^{-\zeta\omega_n t}}{\sqrt{1 - \zeta^2}} \sin\left(\omega_d t 
 
 where $\omega_d$ is the \textbf{damped natural frequency} --- the actual frequency at which the system oscillates (always less than $\omega_n$).
 
+To derive this, we take the Laplace transform of the step response: $Y(s) = \frac{\omega_n^2}{s(s^2 + 2\zeta\omega_n s + \omega_n^2)}$. Partial fraction expansion with complex poles at $s = -\zeta\omega_n \pm j\omega_d$ (where $\omega_d = \omega_n\sqrt{1-\zeta^2}$) and inverse Laplace transform yields the result. The overshoot occurs at the first peak, $t_p = \pi/\omega_d$; substituting into $y(t)$ gives $M_p$.
+
 From this, we can derive closed-form expressions for the performance metrics:
 \begin{align}
 \text{Percent overshoot:} \quad M_p &= e^{-\pi\zeta / \sqrt{1-\zeta^2}} \times 100\% \\
@@ -220,7 +216,7 @@ m\ddot{x} + b\dot{x} + kx = F(t)
 
 Transfer function: $G(s) = \frac{1}{ms^2 + bs + k} = \frac{1/m}{s^2 + \frac{b}{m}s + \frac{k}{m}}$
 
-Natural frequency: $\omega_n = \sqrt{k/m}$. \quad Damping ratio: $\zeta = \frac{b}{2\sqrt{km}}$.
+Natural frequency: $\omega_n = \sqrt{k/m}$. \quad Damping ratio: $\zeta = \frac{b}{2\sqrt{km}}$. These follow from matching coefficients: $ms^2 + bs + k = m(s^2 + 2\zeta\omega_n s + \omega_n^2)$ gives $\omega_n^2 = k/m$ and $2\zeta\omega_n = b/m$, hence $\zeta = b/(2m\omega_n) = b/(2\sqrt{km})$.
 
 \textbf{Now feel the math:}
 \begin{itemize}[nosep]

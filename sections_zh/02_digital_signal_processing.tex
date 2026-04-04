@@ -111,11 +111,7 @@ F(j\omega) = \int_{-\infty}^{\infty} f(t) e^{-j\omega t} \, dt
 
 拉普拉斯变换覆盖整个复平面（连不稳定的发散信号也能应付），而傅里叶变换只活在虚轴上。它回答的是一个单纯的问题："这个信号里每个频率各有多少？"
 
-\textbf{什么时候用哪个：}
-\begin{itemize}
-    \item \textbf{拉普拉斯变换}：用于分析和设计控制系统（传递函数、稳定性）。
-    \item \textbf{傅里叶变换}：用于分析信号（噪声、振动、频率成分）。
-\end{itemize}
+\textbf{什么时候用哪个：}分析和设计控制系统（传递函数、稳定性）时用\textbf{拉普拉斯变换}；分析信号（噪声、振动、频率成分）时用\textbf{傅里叶变换}。
 
 实际工程中，数字系统用的是\textbf{离散傅里叶变换（DFT）}，通过\textbf{快速傅里叶变换（FFT）}算法高效计算。想知道传感器数据里藏着什么频率？扔进 FFT 就行。MATLAB 的 \texttt{fft()} 或 Python 的 \texttt{numpy.fft.fft()} 一行搞定。
 
@@ -196,7 +192,11 @@ H(s) = \frac{\omega_c}{s + \omega_c}
 y[n] = \alpha \cdot x[n] + (1 - \alpha) \cdot y[n-1]
 \end{equation}
 
-其中 $\alpha = \frac{T_s}{T_s + \frac{1}{2\pi f_c}}$，$T_s$ 是采样周期。
+这是对连续滤波器做后向欧拉（Backward Euler）离散化的结果。从 $H(s) = \frac{\omega_c}{s + \omega_c}$ 对应的微分方程 $\dot{y} + \omega_c y = \omega_c x$ 出发，用后向差分 $\dot{y} \approx \frac{y[n] - y[n-1]}{T_s}$ 替代导数：
+\[
+\frac{y[n] - y[n-1]}{T_s} + \omega_c y[n] = \omega_c x[n].
+\]
+解出 $y[n]$：$(1 + \omega_c T_s)\,y[n] = \omega_c T_s \, x[n] + y[n-1]$，整理得 $y[n] = \alpha \, x[n] + (1 - \alpha)\,y[n-1]$，其中 $\alpha = \frac{T_s}{T_s + \frac{1}{2\pi f_c}}$，$T_s$ 是采样周期。
 
 \textbf{适用场景：}平滑带噪声的传感器读数（陀螺仪、加速度计、电机电流）。这是你 90\% 的情况下会用到的滤波器。
 
@@ -382,7 +382,7 @@ $\sum_{k=0}^{n} x[k]$（累加和） & $\frac{1}{1 - z^{-1}}X(z)$ & 离散积分
 \end{tabular}
 \end{center}
 
-\textbf{$s$ 与 $z$ 之间的联系：}精确的映射关系是 $z = e^{sT_s}$。连续极点 $s = -a$ 映射到离散极点 $z = e^{-aT_s}$。这意味着：
+\textbf{$s$ 与 $z$ 之间的联系：}精确的映射关系是 $z = e^{sT_s}$。推导很直观：连续时间指数信号 $x(t) = e^{st}$ 在间隔 $T_s$ 采样后变为序列 $x[n] = e^{snT_s} = (e^{sT_s})^n$。在 Z 变换中，$z^n$ 是离散指数信号。对比两者立得 $z = e^{sT_s}$。连续极点 $s = -a$ 映射到离散极点 $z = e^{-aT_s}$。这意味着：
 \begin{itemize}
     \item 稳定的连续极点（$\text{Re}(s) < 0$）映射到 $|z| < 1$（单位圆内）。稳定性得以保持。
     \item 更快的连续极点（$s$ 更负）映射到更小的 $|z|$（更靠近原点）。极快的极点映射到 $z \approx 0$ 附近。

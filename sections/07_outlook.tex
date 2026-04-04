@@ -49,12 +49,7 @@ In practice, we approximate the Koopman operator by choosing a finite dictionary
 
 \textbf{Why this matters:} Once you have a linear model in the lifted space, you can apply LQR, Kalman filtering, and convex MPC \emph{to genuinely nonlinear systems}---no Jacobian linearization, no operating-point restriction.
 
-\textbf{Recent progress (2024--2025):}
-\begin{itemize}[nosep]
-    \item Invertible Koopman Networks use invertible neural networks to learn both the lifting map and its inverse, solving the long-standing problem of reconstructing the true state from the lifted coordinates.
-    \item Koopman-based MPC with Control Barrier Functions formulates safety-critical nonlinear control as a simple QP in the lifted space.
-    \item Hardware demonstrations include SE(3) Koopman-MPC on quadrotor UAVs and real-time tire-dynamics modeling for autonomous vehicles.
-\end{itemize}
+Recent hardware and algorithmic results (2024--2025) have moved Koopman methods from theoretical curiosities to deployed systems. Invertible Koopman Networks use invertible neural networks to learn both the lifting map and its inverse, solving the long-standing problem of reconstructing the true state from the lifted coordinates. Koopman-based MPC combined with Control Barrier Functions has been shown to formulate safety-critical nonlinear control as a simple QP in the lifted space. On the hardware side, SE(3) Koopman-MPC has been demonstrated on quadrotor UAVs, and real-time tire-dynamics modeling for autonomous vehicles shows the approach scales to fast, safety-critical loops.
 
 \textbf{Connection to what you already know:} Think of the Koopman approach as a principled, data-driven generalization of the Jacobian linearization you learned in the state-space chapter. Jacobian linearization is accurate only near one operating point; Koopman lifting is accurate everywhere the data covers.
 
@@ -97,48 +92,25 @@ No model at all, abundant simulation data & Reinforcement learning \\
 
 \subsection{Reinforcement Learning and Control}
 
-Reinforcement learning (RL) generalizes optimal control to nonlinear systems with arbitrary cost functions and constraints.
+Adaptive control adjusts fixed-structure controllers online; reinforcement learning (RL) goes further by learning the \emph{structure} of the control policy itself. It generalizes optimal control to nonlinear systems with arbitrary cost functions and constraints.
 
 \subsubsection{Core Concepts}
 
-\begin{itemize}[nosep]
-    \item \textbf{Policy} $\pi(s) \to a$: a mapping from states to actions---i.e., a controller. In the linear-quadratic case, $\pi(x) = -Kx$ reduces to LQR.
-    \item \textbf{Value function} $V^\pi(s) = \mathbb{E}\bigl[\sum_{t=0}^{\infty} \gamma^t r_t \mid s_0 = s\bigr]$: the expected cumulative reward from a given state, analogous to the cost-to-go in dynamic programming.
-    \item \textbf{Policy gradient}: update the policy parameters $\theta$ along $\nabla_\theta J(\theta)$ to maximize expected reward.
-\end{itemize}
+RL rests on three pillars. A \textbf{policy} $\pi(s) \to a$ is a mapping from states to actions---in control terms, it \emph{is} the controller. In the linear-quadratic case, $\pi(x) = -Kx$ reduces to the LQR gain we derived earlier. The \textbf{value function} $V^\pi(s) = \mathbb{E}\bigl[\sum_{t=0}^{\infty} \gamma^t r_t \mid s_0 = s\bigr]$ measures the expected cumulative reward from a given state, playing exactly the role of the cost-to-go in dynamic programming. Finally, the \textbf{policy gradient} $\nabla_\theta J(\theta)$ provides the direction in which to update the policy parameters to maximize expected reward---gradient ascent on the controller's performance.
 
 \subsubsection{Two Paradigms}
 
-\begin{enumerate}[nosep]
-    \item \textbf{Model-free RL} (\href{https://arxiv.org/abs/1707.06347}{PPO}, \href{https://arxiv.org/abs/1801.01290}{SAC}, etc.): learns policies through trial and error without a dynamics model. Highly general, but \emph{sample efficiency} is extremely low---typically requiring millions of interactions, feasible only in simulation, with sim-to-real transfer needed for deployment.
-    \item \textbf{Model-based RL} (\href{https://arxiv.org/abs/1906.08253}{MBPO}, \href{https://arxiv.org/abs/1912.01603}{Dreamer}, etc.): first learns a dynamics model from data, then uses it for planning or policy optimization. More sample-efficient and closer in spirit to classical control.
-\end{enumerate}
+These building blocks support two broad implementation strategies. \textbf{Model-free RL} (\href{https://arxiv.org/abs/1707.06347}{PPO}, \href{https://arxiv.org/abs/1801.01290}{SAC}, etc.) learns policies through trial and error without a dynamics model. It is highly general, but \emph{sample efficiency} is extremely low---typically requiring millions of interactions, feasible only in simulation, with sim-to-real transfer needed for deployment. \textbf{Model-based RL} (\href{https://arxiv.org/abs/1906.08253}{MBPO}, \href{https://arxiv.org/abs/1912.01603}{Dreamer}, etc.) first learns a dynamics model from data, then uses it for planning or policy optimization. It is more sample-efficient and closer in spirit to classical control---essentially system identification followed by model-based optimal control, but with a learned model.
 
 \subsubsection{Sim-to-Real Transfer}
 
-RL policies are usually trained in simulation, but a gap exists between simulation and the real system (the sim-to-real gap). Common bridging strategies:
-\begin{itemize}[nosep]
-    \item \textbf{Domain randomization}: randomize physical parameters (mass, friction, latency, etc.) during training, forcing the policy to learn behaviors robust to parameter variations.
-    \item \textbf{System identification and high-fidelity simulation}: carefully calibrate simulation parameters to narrow the sim-real gap.
-    \item \textbf{Fine-tuning}: pre-train in simulation, then fine-tune on the real system with a small amount of data.
-\end{itemize}
+RL policies are usually trained in simulation, but a gap exists between simulation and the real system. Three strategies are commonly used to bridge this gap. \textbf{Domain randomization} randomizes physical parameters (mass, friction, latency, etc.) during training, forcing the policy to learn behaviors robust to parameter variations. \textbf{System identification and high-fidelity simulation} carefully calibrate the simulation parameters to narrow the gap at its source. \textbf{Fine-tuning} pre-trains in simulation, then adjusts on the real system with a small amount of data---getting most of the way in simulation and polishing the last mile on hardware.
 
 \subsubsection{Success Stories and Current Status}
 
-RL has achieved remarkable results in research:
-\begin{itemize}[nosep]
-    \item \textbf{Legged locomotion}: MIT Mini Cheetah (\href{https://arxiv.org/abs/2208.07855}{Margolis et al., 2022}), ANYmal (\href{https://arxiv.org/abs/2109.11978}{Miki et al., 2022}), and other quadrupeds have learned to walk and run on rough terrain via RL.
-    \item \textbf{Dexterous manipulation}: OpenAI's Rubik's cube solving, Google's robotic grasping.
-    \item \textbf{Drone racing}: ETH Z\"urich's Swift system beat human champions in drone racing (\href{https://arxiv.org/abs/2310.08984}{Kaufmann et al., 2023}).
-\end{itemize}
+RL has achieved remarkable results in research. Quadrupedal robots---MIT Mini Cheetah (\href{https://arxiv.org/abs/2208.07855}{Margolis et al., 2022}), ANYmal (\href{https://arxiv.org/abs/2109.11978}{Miki et al., 2022})---have learned to walk and run on rough terrain via RL alone. OpenAI demonstrated Rubik's cube solving with a dexterous robotic hand, and Google has deployed RL-based grasping in warehouse settings. ETH Z\"urich's Swift system beat human champions in drone racing (\href{https://arxiv.org/abs/2310.08984}{Kaufmann et al., 2023}), closing the control loop from raw camera images to motor commands at superhuman speed.
 
-\textbf{Yet RL remains rare in engineering competitions and industrial settings, because:}
-\begin{itemize}[nosep]
-    \item Training requires high-fidelity simulation environments, which are expensive to develop.
-    \item Learned policies are ``black boxes,'' making debugging extremely difficult.
-    \item Competition timelines are usually too short for the RL development cycle.
-    \item Safety and interpretability guarantees are insufficient.
-\end{itemize}
+Despite these successes, RL remains rare in engineering competitions and industrial settings. Training requires high-fidelity simulation environments that are expensive to develop. Learned policies are ``black boxes,'' making debugging extremely difficult when something goes wrong on the field. Competition timelines are usually too short for the full RL development cycle. And safety guarantees remain insufficient---you cannot formally prove that a neural-network policy will never command a dangerous action.
 
 \subsection{Trajectory Optimization and Optimal Control}
 
@@ -150,10 +122,7 @@ subject to the dynamics $\dot{x} = f(x, u)$.
 
 \subsubsection{Two Solution Strategies}
 
-\begin{itemize}[nosep]
-    \item \textbf{Indirect methods} (Pontryagin's Maximum Principle): derive the adjoint equations to obtain necessary conditions, then solve a two-point boundary value problem. Mathematically elegant, but difficult to implement for systems with complex constraints.
-    \item \textbf{Direct methods} (collocation, multiple shooting): discretize the trajectory into decision variables and convert the problem into a large-scale nonlinear program (NLP). More practical---modern trajectory optimization tools universally adopt this strategy.
-\end{itemize}
+There are two fundamentally different ways to attack this problem. \textbf{Indirect methods}, rooted in Pontryagin's Maximum Principle, derive adjoint (costate) equations to obtain necessary conditions for optimality, then solve the resulting two-point boundary value problem. They are mathematically elegant but become unwieldy when the system has complex inequality constraints. \textbf{Direct methods} (collocation, multiple shooting) take a more engineering-oriented approach: discretize the trajectory into a finite set of decision variables and convert the entire problem into a large-scale nonlinear program (NLP) that off-the-shelf solvers can handle. Modern trajectory optimization tools universally adopt direct methods.
 
 \subsubsection{iLQR and DDP}
 
@@ -165,14 +134,11 @@ subject to the dynamics $\dot{x} = f(x, u)$.
 
 \subsection{Neural Networks Meet Control}
 
+Trajectory optimization gives us optimal solutions \emph{given} a model. But what if parts of the model are too complex to derive from physics? Neural networks can fill in the gaps.
+
 \subsubsection{Neural Networks as Controller Components}
 
-Neural networks need not replace the entire controller. A more practical approach is to embed them within specific modules of a classical control framework:
-\begin{itemize}[nosep]
-    \item \textbf{Learning dynamics models}: fit $\dot{x} = f_\theta(x, u)$ with a neural network, then use the learned model inside MPC or iLQR.
-    \item \textbf{Learning residual dynamics}: $\dot{x} = f_{\mathrm{phys}}(x, u) + f_\theta(x, u)$---let the network compensate for what the physics model fails to capture.
-    \item \textbf{Learning cost functions}: learn task objectives from human demonstrations (inverse reinforcement learning).
-\end{itemize}
+Neural networks need not replace the entire controller. A more practical approach is to embed them within specific modules of a classical control framework. The most common pattern is \textbf{learning the dynamics model}: fit $\dot{x} = f_\theta(x, u)$ with a neural network, then plug the learned model into MPC or iLQR as a drop-in replacement for the physics-based model. When a first-principles model already exists but is not accurate enough, a neural network can \textbf{learn the residual}: $\dot{x} = f_{\mathrm{phys}}(x, u) + f_\theta(x, u)$, letting the network capture only what the physics model misses---friction, cable elasticity, aerodynamic effects. A third pattern is \textbf{learning the cost function} from human demonstrations (inverse reinforcement learning), which is useful when the task objective is hard to specify mathematically but easy to demonstrate.
 
 \subsubsection{Neural ODEs and Physics-Informed Neural Networks}
 
@@ -231,12 +197,7 @@ where $t_k$ is the last trigger time, $\sigma > 0$ is a relative threshold, and 
 
 \textbf{Self-triggered control} is a proactive variant: instead of continuously monitoring the state, the controller \emph{predicts} when the next trigger will be needed and schedules it in advance, allowing the processor to sleep in between.
 
-\textbf{Why this matters for robotics:}
-\begin{itemize}[nosep]
-    \item On a CAN bus shared among 8+ motor controllers, reducing unnecessary messages directly improves worst-case latency for high-priority loops.
-    \item On battery-powered systems (drones, mobile robots), fewer computations mean longer runtime.
-    \item In multi-agent systems (UAV swarms, multi-robot warehouses), event-triggered communication drastically reduces network congestion.
-\end{itemize}
+\textbf{Why this matters for robotics.}\;On a CAN bus shared among 8+ motor controllers, reducing unnecessary messages directly improves worst-case latency for high-priority loops. On battery-powered systems (drones, mobile robots), fewer computations mean longer runtime. And in multi-agent systems---UAV swarms, multi-robot warehouses---event-triggered communication drastically reduces network congestion.
 
 \textbf{Connection to classical control:} ETC is a generalization of sampled-data control theory. Stability analysis uses the same Lyapunov tools from the Modern Control chapter, with an additional step to prove that inter-event intervals are bounded away from zero (ruling out Zeno behavior). The proof typically relies on input-to-state stability (ISS) arguments.
 

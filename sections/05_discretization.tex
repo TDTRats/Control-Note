@@ -19,6 +19,8 @@ For a first-order system $G(s) = \frac{a}{s + a}$ with sampling period $T_s$:
 G(z) = \frac{1 - e^{-aT_s}}{z - e^{-aT_s}}
 \end{equation}
 
+\textbf{Derivation sketch.} The ZOH discretization computes $G(z) = (1 - z^{-1})\,\mathcal{Z}\!\left\{\frac{G(s)}{s}\right\}$. The continuous-time step response of $G(s)$ is $y(t) = 1 - e^{-at}$; sampling at $t = nT_s$ gives $y[n] = 1 - e^{-anT_s}$. Taking the $\mathcal{Z}$-transform and multiplying by $(1 - z^{-1})$ yields the result above.
+
 \textbf{When to use:} When you want the discrete system to match the continuous system exactly at the sampling instants. MATLAB's \texttt{c2d(sys, Ts, 'zoh')} uses this method.
 
 \textbf{Downside:} The conversion formulas can be complex for higher-order systems. Usually done with software tools, not by hand.
@@ -48,6 +50,8 @@ H(z) = \frac{\omega_c T_s (z + 1)}{(2 + \omega_c T_s) z + (\omega_c T_s - 2)}
 \begin{equation}
 \omega_{\text{pre-warped}} = \frac{2}{T_s} \tan\left(\frac{\omega_c T_s}{2}\right)
 \end{equation}
+
+\textbf{Intuition.} The bilinear transform maps the entire continuous frequency axis $\omega \in [0, \infty)$ onto a finite arc of the unit circle $\omega_d \in [0, \pi/T_s)$, compressing high frequencies. The exact relationship is $\omega = \frac{2}{T_s}\tan\frac{\omega_d T_s}{2}$. Pre-warping inverts this mapping: we feed the bilinear transform a ``stretched'' frequency so that our target frequency $\omega_c$ lands at exactly the right place after the compression.
 
 Replace $\omega_c$ with $\omega_{\text{pre-warped}}$ in your continuous design, then apply Tustin.
 

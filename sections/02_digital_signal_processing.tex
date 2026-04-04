@@ -111,11 +111,7 @@ F(j\omega) = \int_{-\infty}^{\infty} f(t) e^{-j\omega t} \, dt
 
 While the Laplace transform works with the full complex plane (and can handle unstable, growing signals), the Fourier transform lives strictly on the imaginary axis. It tells you: ``How much of each frequency is present in this signal?''
 
-\textbf{When to use which:}
-\begin{itemize}
-    \item \textbf{Laplace transform}: For analyzing and designing control systems (transfer functions, stability).
-    \item \textbf{Fourier transform}: For analyzing signals (noise, vibration, frequency content).
-\end{itemize}
+\textbf{When to use which:} Use the \textbf{Laplace transform} for analyzing and designing control systems (transfer functions, stability). Use the \textbf{Fourier transform} for analyzing signals (noise, vibration, frequency content).
 
 In practice, for digital systems we often use the \textbf{Discrete Fourier Transform (DFT)}, computed efficiently via the \textbf{Fast Fourier Transform (FFT)} algorithm. If you ever want to see what frequencies are hiding in your sensor data, just throw it into an FFT. MATLAB's \texttt{fft()} or Python's \texttt{numpy.fft.fft()} will do the job in one line.
 
@@ -196,7 +192,20 @@ where $\omega_c = 2\pi f_c$ is the cutoff frequency in rad/s. At frequencies bel
 y[n] = \alpha \cdot x[n] + (1 - \alpha) \cdot y[n-1]
 \end{equation}
 
-where $\alpha = \frac{T_s}{T_s + \frac{1}{2\pi f_c}}$ and $T_s$ is the sampling period.
+This follows from a backward Euler discretization of the continuous filter. Starting from $H(s) = \frac{\omega_c}{s + \omega_c}$, the corresponding differential equation is $\dot{y} + \omega_c y = \omega_c x$. Replacing $\dot{y}$ with the backward difference $\frac{y[n] - y[n-1]}{T_s}$ gives:
+\[
+\frac{y[n] - y[n-1]}{T_s} + \omega_c\, y[n] = \omega_c\, x[n]
+\]
+Collecting terms in $y[n]$:
+\[
+y[n]\!\left(\frac{1}{T_s} + \omega_c\right) = \omega_c\, x[n] + \frac{y[n-1]}{T_s}
+\]
+Dividing both sides by $\left(\frac{1}{T_s} + \omega_c\right)$ and defining $\alpha = \frac{\omega_c T_s}{1 + \omega_c T_s} = \frac{T_s}{T_s + 1/\omega_c}$:
+\[
+y[n] = \alpha \cdot x[n] + (1 - \alpha) \cdot y[n-1]
+\]
+
+where $\alpha = \frac{T_s}{T_s + \frac{1}{2\pi f_c}}$ (since $\omega_c = 2\pi f_c$) and $T_s$ is the sampling period.
 
 \textbf{When to use:} Smoothing noisy sensor readings (gyroscope, accelerometer, motor current). This is the filter you will use 90\% of the time.
 
@@ -382,7 +391,9 @@ $\sum_{k=0}^{n} x[k]$ (running sum) & $\frac{1}{1 - z^{-1}}X(z)$ & Discrete inte
 \end{tabular}
 \end{center}
 
-\textbf{The connection between $s$ and $z$:} The exact mapping is $z = e^{sT_s}$. A continuous pole at $s = -a$ maps to a discrete pole at $z = e^{-aT_s}$. This means:
+\textbf{The connection between $s$ and $z$:} The exact mapping is $z = e^{sT_s}$. The connection is simple: a continuous-time exponential $x(t) = e^{st}$, when sampled at intervals $T_s$, becomes the sequence $x[n] = e^{snT_s} = (e^{sT_s})^n$. In the Z-transform world, $z^n$ is the discrete exponential. Matching terms gives $z = e^{sT_s}$.
+
+A continuous pole at $s = -a$ maps to a discrete pole at $z = e^{-aT_s}$. This means:
 \begin{itemize}
     \item A stable continuous pole ($\text{Re}(s) < 0$) maps to $|z| < 1$ (inside the unit circle). Stability is preserved.
     \item A faster continuous pole (more negative $s$) maps to a smaller $|z|$ (closer to the origin). Very fast poles map near $z = 0$.
