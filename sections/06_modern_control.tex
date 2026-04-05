@@ -305,6 +305,27 @@ Do not solve this by hand. Use \texttt{lqr(A, B, Q, R)} in MATLAB or \texttt{sci
 
 \textbf{Limitation:} LQR requires full state feedback ($\mathbf{u} = -K\mathbf{x}$), which means you need to know all states. If you cannot measure all states, you need an observer (see Section 6.4).
 
+\vspace{0.5em}
+\begin{mdframed}[linewidth=1pt, innertopmargin=10pt, innerbottommargin=10pt]
+\textbf{Easter Egg: PID Is a State-Space Controller in Disguise}
+
+\vspace{0.3em}
+Now that you understand state feedback, let us revisit an old friend from a new angle. Your PID controller from the Classical Control chapter---is it secretly a state-space controller?
+
+Yes. Consider a first-order plant $\dot{y} = -ay + bu$ tracking a reference $r$. Define three ``states'' that the PID implicitly uses:
+\[
+x_1 = \int_0^t (r - y)\,d\tau \quad \text{(integral of error)}, \qquad
+x_2 = r - y \quad \text{(error)}, \qquad
+x_3 = -\dot{y} \quad \text{(negative velocity)}
+\]
+
+The PID control law $u = K_i x_1 + K_p x_2 + K_d x_3$ is exactly a state feedback $u = K \mathbf{x}$ with gain vector $K = [K_i, \; K_p, \; K_d]$. You have been doing state feedback all along---you just did not know you were choosing the ``states'' and the ``gain matrix'' by hand.
+
+What does LQR add? Instead of you picking $K_p$, $K_i$, $K_d$ by trial and error, LQR \textit{computes} the optimal gain vector $K$ by solving the Riccati equation with your choice of $Q$ and $R$. The ``art of PID tuning'' is replaced by the ``art of $Q/R$ tuning''---which is easier because $Q$ and $R$ have direct physical meaning (how much do you penalize error vs. effort?), whereas $K_p$, $K_i$, $K_d$ are abstract gains whose interactions are hard to predict.
+
+This also explains why PID works remarkably well for SISO systems: for a first-order plant with integral action, PID \textit{is} the optimal state-feedback controller---you are just finding the optimal gains by hand instead of by Riccati.
+\end{mdframed}
+
 \subsubsection{A Brief Primer on Optimization and Convexity}
 
 MPC solves an optimization problem at every time step. Before diving in, let us establish the minimum optimization vocabulary you need.

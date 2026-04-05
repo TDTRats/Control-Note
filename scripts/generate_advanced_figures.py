@@ -355,14 +355,14 @@ def fig_pid_output_lpf():
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
 
     ax1.plot(t, setpoint, 'k--', linewidth=1)
-    ax1.plot(t, y_raw, 'C3', alpha=0.5, linewidth=1, label='No filtering — noisy D')
+    ax1.plot(t, y_raw, 'C3', alpha=0.8, linewidth=1.2, label='No filtering — noisy D')
     ax1.plot(t, y_dfilt, 'C0', linewidth=2, label='Filtered derivative (N=15)')
     ax1.plot(t, y_lpf, 'C2', linewidth=2, label='Output LPF (α=0.35)')
     ax1.set_ylabel('Position')
     ax1.set_title('PID with Noisy Measurements — Filtering strategies compared')
     ax1.legend(fontsize=9)
 
-    ax2.plot(t[:2000], u_raw[:2000], 'C3', alpha=0.3, linewidth=0.5, label='Unfiltered — actuator abuse')
+    ax2.plot(t[:2000], u_raw[:2000], 'C3', alpha=0.6, linewidth=0.8, label='Unfiltered — actuator abuse')
     ax2.plot(t[:2000], u_dfilt[:2000], 'C0', linewidth=1.5, label='Filtered D')
     ax2.plot(t[:2000], u_lpf[:2000], 'C2', linewidth=1.5, label='Output LPF')
     ax2.set_xlabel('Time (s)')

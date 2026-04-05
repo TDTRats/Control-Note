@@ -226,6 +226,28 @@ We increase $K_p$ slightly for a faster rise time, reduce $K_i$ (we only need it
 \caption{PID tuning progression on a second-order plant. P-only has steady-state error; PI eliminates it but overshoots more; PID damps the overshoot while maintaining zero steady-state error.}
 \end{figure}
 
+\vspace{0.5em}
+\begin{mdframed}[linewidth=1.5pt, innertopmargin=10pt, innerbottommargin=10pt]
+\textbf{The Most Dangerous PID Bug: Positive Feedback}
+
+\vspace{0.3em}
+Before we move on, let us see what happens when the sign convention is wrong. This is the single most common and most destructive PID bug, and every competition team encounters it at least once.
+
+Consider a gimbal motor where you accidentally write \texttt{error = measurement - setpoint} instead of \texttt{error = setpoint - measurement}. Alternatively, the motor spins in the direction \textit{opposite} to what you assumed, or the encoder counts in the wrong direction. The effect is identical: positive error produces a control output that \textit{increases} the error instead of decreasing it. You have turned negative feedback into positive feedback.
+
+The system does not oscillate gently. It does not overshoot and settle. It \textbf{runs away instantly}---the output slams to the actuator limit within milliseconds and stays there. The motor spins at full speed in the wrong direction. If your robot has no mechanical stop, something breaks.
+
+The figure below compares a correctly wired PID (blue) with a sign-error PID (red) on the same plant. Notice that the red curve does not resemble a ``badly tuned'' response---it is qualitatively different. No amount of gain tuning can fix a sign error; only correcting the sign convention will.
+
+\textbf{How to check:} Before closing the loop, command a small positive setpoint change and verify that the control output moves the plant in the direction that \textit{reduces} the error. If it does not, flip the sign. This takes 10 seconds and can save hours of confused debugging.
+\end{mdframed}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{positive_feedback_pid.pdf}
+\caption{Correct PID (blue) tracks the setpoint smoothly. A sign-error PID (red) creates positive feedback: the output runs away to the actuator limit within milliseconds. This is not a tuning problem---no gain adjustment can fix it. Only correcting the sign convention will.}
+\end{figure}
+
 \subsubsection{PID Controller -- Discrete Form}
 
 Your microcontroller cannot compute continuous integrals and derivatives. It works with discrete samples at a fixed time step $T_s$. The discrete PID is:

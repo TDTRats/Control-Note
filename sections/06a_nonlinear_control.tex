@@ -31,6 +31,12 @@ The key insight: \textit{linear control is a special case of nonlinear control, 
 
 How far ``from the equilibrium'' can you go before linear control breaks down? There is no universal answer; it depends on the system. For the pendulum, linearization is reasonable within about $\pm 15°$ of the upright position. For a wheeled robot driving straight, the linear model can be valid over a large speed range because the nonlinearities (tire slip, aerodynamic drag) grow slowly. The phase portrait and simulation are your best friends for answering this question in practice.
 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{phase_portrait_pendulum.pdf}
+  \caption{Phase portrait of the inverted pendulum (with light damping). The hanging position ($\theta = 0$) is a stable node (green circle); the upright position ($\theta = \pi$) is an unstable saddle (red square). Dashed lines are separatrices---the boundary between oscillation and rotation. The blue shaded region near $\theta = \pi$ is where linearization is valid and LQR works. Outside it, nonlinear tools are needed.}
+\end{figure}
+
 %-----------------------------------------------------------------------------
 \subsection{Feedback Linearization}
 %-----------------------------------------------------------------------------

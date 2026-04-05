@@ -301,6 +301,27 @@ A^T P + PA - PBR^{-1}B^T P + Q = 0
 
 \textbf{局限性：} LQR 需要完整的状态反馈（$\mathbf{u} = -K\mathbf{x}$），这意味着你需要知道所有状态。如果无法测量所有状态，则需要观测器（见第 6.4 节）。
 
+\vspace{0.5em}
+\begin{mdframed}[linewidth=1pt, innertopmargin=10pt, innerbottommargin=10pt]
+\textbf{彩蛋：PID 其实是伪装过的状态空间控制器}
+
+\vspace{0.3em}
+理解了状态反馈之后，我们换个角度重新审视一下老朋友。经典控制那章的 PID 控制器——它会不会本质上就是一个状态空间控制器？
+
+答案是：确实如此。考虑一个跟踪参考 $r$ 的一阶被控对象 $\dot{y} = -ay + bu$。定义三个 PID 隐式使用的"状态"：
+\[
+x_1 = \int_0^t (r - y)\,d\tau \quad \text{（误差积分）}, \qquad
+x_2 = r - y \quad \text{（误差）}, \qquad
+x_3 = -\dot{y} \quad \text{（负速度）}
+\]
+
+PID 控制律 $u = K_i x_1 + K_p x_2 + K_d x_3$ 恰好就是状态反馈 $u = K \mathbf{x}$，其中增益向量 $K = [K_i, \; K_p, \; K_d]$。你一直在做状态反馈——只不过你是在用手动试错的方式选"状态"和"增益矩阵"。
+
+那 LQR 多了什么？它不用你手调 $K_p$、$K_i$、$K_d$，而是通过求解 Riccati 方程，根据你选的 $Q$ 和 $R$ 自动\textit{算出}最优增益向量 $K$。"PID 调参的艺术"变成了"$Q/R$ 调参的艺术"——后者更容易，因为 $Q$ 和 $R$ 有直接的物理含义（你多在乎误差、多心疼执行器），而 $K_p$、$K_i$、$K_d$ 是抽象增益，它们之间的交互很难预判。
+
+这也解释了为什么 PID 在 SISO 系统上效果出奇地好：对于带积分环节的一阶对象，PID \textit{就是}最优状态反馈控制器——你只不过是在用手而不是用 Riccati 找最优增益罢了。
+\end{mdframed}
+
 \subsubsection{优化与凸性简介}
 
 MPC 在每个时间步都要解一道优化题。在深入之前，先建立必要的优化概念。
