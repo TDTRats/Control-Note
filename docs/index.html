@@ -380,7 +380,7 @@
 
 <div class="header">
     <h1 id="title">A Practical Guide to Control Theory</h1>
-    <p class="subtitle" id="subtitle">From Sensor Noise to Kalman Filters, From PID to MPC</p>
+    <p class="subtitle" id="subtitle">From PID to MPC, From Kalman Filters to Nonlinear Control</p>
     <p class="author">
         by Skywalker Liu &middot;
         <a href="https://github.com/liuskywalkerjskd/Control-Note" target="_blank">GitHub</a>
@@ -441,24 +441,34 @@
         </div>
         <div class="toc-content collapsed" id="toc-content">
             <ul class="toc-list" id="toc-en">
+                <li><span class="toc-num">-</span><span class="toc-title">Two Numbers: e and &pi;</span><span class="toc-desc">Why &pi; governs periodicity and e governs decay; Euler's formula</span></li>
                 <li><span class="toc-num">1</span><span class="toc-title">Introduction</span><span class="toc-desc">Motivation, learning path, how to use this guide</span></li>
-                <li><span class="toc-num">2</span><span class="toc-title">Digital Signal Processing</span><span class="toc-desc">Frequency domain, Laplace/Fourier transforms, LPF, complementary & notch filters</span></li>
-                <li><span class="toc-num">3</span><span class="toc-title">System Description</span><span class="toc-desc">Transfer functions, state-space, poles & zeros, stability analysis</span></li>
-                <li><span class="toc-num">4</span><span class="toc-title">Classical Control</span><span class="toc-desc">PID (single/cascade/parallel), tuning, feedforward, trajectory generation</span></li>
-                <li><span class="toc-num">5</span><span class="toc-title">Discretization & Implementation</span><span class="toc-desc">ZOH, Tustin, matched Z-transform, MCU implementation</span></li>
-                <li><span class="toc-num">6</span><span class="toc-title">Modern Control</span><span class="toc-desc">LQR, Kalman filter, EKF, quaternion EKF, LQG, linear MPC</span></li>
-                <li><span class="toc-num">7</span><span class="toc-title">Future Prospects</span><span class="toc-desc">Data-driven control, reinforcement learning, iLQR/DDP, neural networks + control</span></li>
+                <li><span class="toc-num">2</span><span class="toc-title">Digital Signal Processing</span><span class="toc-desc">Laplace/Fourier/Z-transforms, poles & zeros, LPF/BPF/HPF/notch filters</span></li>
+                <li><span class="toc-num">3</span><span class="toc-title">System Description</span><span class="toc-desc">Transfer functions, state-space, stability, 2nd-order systems, motor modeling</span></li>
+                <li><span class="toc-num">4</span><span class="toc-title">Classical Control</span><span class="toc-desc">Bode plots, PID (single/cascade/parallel), positive-feedback diagnosis, tuning, sysid</span></li>
+                <li><span class="toc-num">5</span><span class="toc-title">Discretization & Implementation</span><span class="toc-desc">ZOH, Tustin, FIR/IIR filter design, fixed-point, embedded implementation</span></li>
+                <li><span class="toc-num">6</span><span class="toc-title">Modern Control</span><span class="toc-desc">LQR, MPC, NMPC, TinyMPC, Kalman/EKF, LQG, trajectory planning</span></li>
+                <li><span class="toc-num">7</span><span class="toc-title">Nonlinear Control</span><span class="toc-desc">Feedback linearization, sliding mode, gain scheduling, Lyapunov design, NMPC</span></li>
+                <li><span class="toc-num">8</span><span class="toc-title">Multi-Loop Architecture</span><span class="toc-desc">Full control stack, cascade architecture, bandwidth separation, state machines</span></li>
+                <li><span class="toc-num">9</span><span class="toc-title">Debugging & Tuning Cookbook</span><span class="toc-desc">Diagnostic flowcharts, failure mode signatures, PID tuning on real hardware</span></li>
+                <li><span class="toc-num">10</span><span class="toc-title">Outlook</span><span class="toc-desc">Data-driven control, Koopman, adaptive control, RL, diffusion policies, VLAs</span></li>
                 <li><span class="toc-num">A</span><span class="toc-title">Appendix: C++ Modules</span><span class="toc-desc">Header-only, embedded-ready implementations of all algorithms</span></li>
+                <li><span class="toc-num">B</span><span class="toc-title">Appendix: Attitude & Rotation</span><span class="toc-desc">Coordinate frames, rotation matrices, Euler angles, gimbal lock, quaternions</span></li>
             </ul>
             <ul class="toc-list" id="toc-zh" style="display:none">
-                <li><span class="toc-num">1</span><span class="toc-title">引言</span><span class="toc-desc">为什么写这份指南，结构说明</span></li>
-                <li><span class="toc-num">2</span><span class="toc-title">数字信号处理</span><span class="toc-desc">频域、拉普拉斯/傅里叶变换、低通/互补/陷波滤波器</span></li>
-                <li><span class="toc-num">3</span><span class="toc-title">系统描述</span><span class="toc-desc">传递函数、状态空间模型、极点与零点、稳定性分析</span></li>
-                <li><span class="toc-num">4</span><span class="toc-title">经典控制理论</span><span class="toc-desc">PID（单环/串级/并联）、调参方法、前馈、轨迹生成</span></li>
-                <li><span class="toc-num">5</span><span class="toc-title">离散化与实现</span><span class="toc-desc">ZOH、Tustin、匹配 Z 变换、单片机实现</span></li>
-                <li><span class="toc-num">6</span><span class="toc-title">现代控制理论</span><span class="toc-desc">LQR、卡尔曼滤波、EKF、四元数 EKF、LQG、线性 MPC</span></li>
-                <li><span class="toc-num">7</span><span class="toc-title">展望</span><span class="toc-desc">数据驱动控制、强化学习、iLQR/DDP、神经网络与控制融合</span></li>
-                <li><span class="toc-num">附</span><span class="toc-title">附录：即插即用 C++ 模块</span><span class="toc-desc">仅头文件、嵌入式友好的全部核心算法实现</span></li>
+                <li><span class="toc-num">-</span><span class="toc-title">两个支配世界的数</span><span class="toc-desc">&pi; 主导周期性，e 主导衰减；欧拉公式</span></li>
+                <li><span class="toc-num">1</span><span class="toc-title">引言</span><span class="toc-desc">写作动机、学习路径、阅读方式</span></li>
+                <li><span class="toc-num">2</span><span class="toc-title">数字信号处理</span><span class="toc-desc">拉普拉斯/傅里叶/Z 变换、极零点、低通/带通/高通/陷波滤波</span></li>
+                <li><span class="toc-num">3</span><span class="toc-title">系统描述</span><span class="toc-desc">传递函数、状态空间、稳定性、二阶系统、电机建模</span></li>
+                <li><span class="toc-num">4</span><span class="toc-title">经典控制</span><span class="toc-desc">Bode 图、PID（单环/串级/并联）、正反馈诊断、调参、系统辨识</span></li>
+                <li><span class="toc-num">5</span><span class="toc-title">离散化与实现</span><span class="toc-desc">ZOH、Tustin、FIR/IIR 设计、定点数、嵌入式实现</span></li>
+                <li><span class="toc-num">6</span><span class="toc-title">现代控制</span><span class="toc-desc">LQR、MPC、NMPC、TinyMPC、卡尔曼/EKF、LQG、轨迹规划</span></li>
+                <li><span class="toc-num">7</span><span class="toc-title">非线性控制</span><span class="toc-desc">反馈线性化、滑模控制、增益调度、Lyapunov 设计、NMPC 对比</span></li>
+                <li><span class="toc-num">8</span><span class="toc-title">多环架构设计</span><span class="toc-desc">完整控制栈、串级架构、带宽分离、状态机</span></li>
+                <li><span class="toc-num">9</span><span class="toc-title">调试与调参手册</span><span class="toc-desc">诊断流程图、故障模式特征、真实硬件 PID 调参</span></li>
+                <li><span class="toc-num">10</span><span class="toc-title">展望</span><span class="toc-desc">数据驱动控制、Koopman、自适应控制、RL、扩散策略、VLA</span></li>
+                <li><span class="toc-num">附A</span><span class="toc-title">附录：C++ 模块</span><span class="toc-desc">仅头文件、嵌入式友好的算法实现</span></li>
+                <li><span class="toc-num">附B</span><span class="toc-title">附录：姿态与旋转</span><span class="toc-desc">坐标系、旋转矩阵、欧拉角、万向锁、四元数</span></li>
             </ul>
         </div>
     </div>
@@ -492,7 +502,7 @@
 const i18n = {
     en: {
         title: 'A Practical Guide to Control Theory',
-        subtitle: 'From Sensor Noise to Kalman Filters, From PID to MPC',
+        subtitle: 'From PID to MPC, From Kalman Filters to Nonlinear Control',
         tocHeading: 'Table of Contents',
         tabZh: 'Chinese Edition',
         tabEn: 'English Edition',
@@ -510,7 +520,7 @@ const i18n = {
     },
     zh: {
         title: '控制理论实用指南',
-        subtitle: '从传感器噪声到卡尔曼滤波，从 PID 到 MPC',
+        subtitle: '从 PID 到 MPC，从卡尔曼滤波到非线性控制',
         tocHeading: '目录',
         tabZh: '中文版',
         tabEn: '英文版',
