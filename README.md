@@ -24,12 +24,17 @@ If you can follow derivatives and matrix multiplication, you are ready.
 | - | **Two Numbers: $e$ and $\pi$** | Why $\pi$ governs periodicity and $e$ governs decay; Euler's formula unifies both |
 | 1 | **Introduction** | Motivation, learning path, how to use this guide |
 | 2 | **Digital Signal Processing** | Frequency-domain basics, Laplace/Fourier transforms, poles & zeros intro, LPF/BPF/HPF/notch filters, Z-transform |
+| 2b | **Sensor Calibration & Selection** | Sensor error model, IMU 6-position calibration, Allan variance, encoder velocity estimation, magnetometer calibration |
 | 3 | **System Description** | Transfer functions, state-space models, stability, 2nd-order systems, DC motor modeling (brushed & BLDC/FOC) |
 | 4 | **Classical Control** | Feedback fundamentals, Bode plots, PID (single/cascade/parallel), tuning methods, feedforward, system identification |
+| 4b | **Multi-Loop Architecture** | Full control stack, cascade architecture, bandwidth separation, state machines, timing/RTOS |
 | 5 | **Discretization & Implementation** | ZOH, Tustin, matched Z-transform, FIR/IIR filter design, fixed-point, embedded implementation |
+| 5b | **Simulation Workflow** | Model/Software/Hardware-in-the-loop, Python simulation templates, sim-reality gap |
+| 5c | **Debugging & Tuning Cookbook** | Diagnostic flowcharts, failure mode signatures, PID tuning on real hardware, competition emergency fixes |
 | 6 | **Modern Control** | Controllability/observability, LQR, MPC, TinyMPC, Luenberger observer, Kalman/EKF, LQG, trajectory planning |
-| 7 | **Attitude & Rotation** | Coordinate frames (NWU), rotation matrices, Euler angles, gimbal lock, axis-angle, quaternions |
-| 8 | **Outlook** | Data-driven control, Koopman operator, adaptive control, RL, diffusion policies, VLAs, neural ODEs, event-triggered control |
+| 6a | **Nonlinear Control** | Feedback linearization, sliding mode control, gain scheduling, Lyapunov-based design, energy shaping |
+| 6b | **Attitude & Rotation** | Coordinate frames (NWU), rotation matrices, Euler angles, gimbal lock, axis-angle, quaternions |
+| 7 | **Outlook** | Data-driven control, Koopman operator, adaptive control, RL, diffusion policies, VLAs, neural ODEs, event-triggered control |
 | A | **Appendix: Plug-and-Play C++ Modules** | Header-only, embedded-friendly algorithm modules |
 
 ## Engineering-Workflow-Oriented Structure
