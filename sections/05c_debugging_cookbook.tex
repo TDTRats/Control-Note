@@ -93,43 +93,7 @@ You command the motor to move. Nothing happens. This is either the easiest or th
 \end{enumerate}
 
 %-----------------------------------------------------------------------------
-\subsection{Is It Mechanical, Electrical, Software, or Control?}
-%-----------------------------------------------------------------------------
-
-Many debugging sessions go wrong because the student is tuning PID gains when the real problem is a loose setscrew, a sagging power supply, or a sign error in code. Before touching gains, classify the problem.
-
-%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-\subsubsection{The Isolation Test}
-%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-This is the single most valuable debugging technique. It takes two minutes and saves hours.
-
-\textbf{Step 1:} Disconnect the controller. Command a constant open-loop torque (e.g., send a fixed current command over CAN for C610/C620, or a constant PWM duty for simpler drivers). Observe the motor.
-\begin{itemize}
-    \item If the motor spins smoothly and steadily: the problem is in your controller or software. Go to the software/control checks.
-    \item If the motor vibrates, stalls, or behaves erratically: the problem is mechanical or electrical. Do not touch your code yet.
-\end{itemize}
-
-\textbf{Step 2:} Check mechanical. Disconnect the motor from the mechanism entirely. Spin the output shaft by hand. Does it bind? Is there excessive backlash? Does it feel gritty (bad bearings) or catchy (belt tension, gear mesh)?
-
-\textbf{Step 3:} Check electrical. Measure your power supply voltage with the motor running under load. Does it sag significantly (more than 10\%)? If multiple axes move simultaneously and the robot behaves worse, you almost certainly have a power supply problem.
-
-%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-\subsubsection{Common Electrical Problems}
-%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-\begin{itemize}
-    \item \textbf{Power supply voltage sag under load.} The battery or power supply cannot deliver enough current. When multiple motors draw simultaneously, the voltage drops, and all controllers lose authority. The symptom is that the robot works fine with one motor, but falls apart when all motors run. Fix: use a higher-capacity battery, add bulk capacitors near the motor drivers, or stagger motor startup.
-
-    \item \textbf{Ground loops.} If your logic board and power board share a ground path, motor current flowing through the shared ground creates a voltage drop that appears as sensor noise. The noise is proportional to motor current---it gets worse when the motor works harder. Fix: use separate ground planes, star grounding, or optically isolated sensor interfaces.
-
-    \item \textbf{EMI from PWM switching.} The fast edges of PWM switching (dV/dt can exceed 1~V/ns) create electromagnetic interference that corrupts nearby sensor signals. Analog sensors (current sense, potentiometers) and slow digital buses (I2C) are especially vulnerable. Fix: keep sensor wires away from motor wires, use shielded cables, add filtering capacitors on sensor inputs, prefer SPI over I2C for noise-sensitive applications.
-
-    \item \textbf{Connector contact resistance.} A corroded or loose connector can add 0.1--1~$\Omega$ of resistance in the power path. At 10~A motor current, that is 1--10~V of drop---enough to starve the motor or brown out the MCU. The symptom is intermittent: the robot works fine on the bench but fails under competition loads. Wiggle every power connector while the motor is running and watch for glitches. Fix: clean connectors, use XT60/XT30 connectors with proper crimps, and add a bulk capacitor (100--470~$\mu$F) near each motor driver to buffer transient current demands.
-\end{itemize}
-
-%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-\subsubsection{Common Software Problems}
+\subsection{Common Software and Control Bugs}
 %- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 \begin{itemize}
@@ -157,29 +121,9 @@ int32_t read_encoder(void) {
     \item \textbf{Wrong units or scaling.} Your sensor returns counts but your controller expects radians. Your PWM register takes 0--999 but your PID outputs 0--100. Unit mismatches cause gains to be off by orders of magnitude. Always document the units at each interface boundary with a comment.
 \end{itemize}
 
-%-----------------------------------------------------------------------------
-\subsection{Oscilloscope and Logic Analyzer Techniques}
-%-----------------------------------------------------------------------------
+\subsection{Logging PID Internals}
 
-Your eyes and ears are poor measurement instruments. ``It seems to vibrate'' tells you nothing quantitative. The right tools make invisible problems visible.
-
-\textbf{Command verification.} For CAN-based systems (C610/C620), use a CAN debugger or logic analyzer to decode the frames on the bus. Verify: (1) your MCU is transmitting at the expected rate (typically 1~kHz), (2) the CAN ID matches the ESC's expected ID, (3) the current command bytes contain the values you intend. For PWM-based drivers, put an oscilloscope probe on the motor phase output and verify the duty cycle matches your software command.
-
-\textbf{Control loop timing.} Toggle a GPIO pin at the start of your ISR, and clear it at the end. On the scope, the pulse width is your ISR execution time, and the period is your loop period. Both should match your design. If the pulse width is close to the period, your ISR is too slow---it will miss deadlines and the control quality degrades. Here is the code:
-
-\begin{verbatim}
-void TIM_IRQHandler(void) {
-    HAL_GPIO_WritePin(DEBUG_GPIO, GPIO_PIN_SET);   // ISR start
-
-    // ... your control code here ...
-
-    HAL_GPIO_WritePin(DEBUG_GPIO, GPIO_PIN_RESET); // ISR end
-}
-\end{verbatim}
-
-\textbf{Sensor signal integrity.} Use a logic analyzer to probe I2C/SPI bus traffic. Verify that the data bytes match what your software reads. If the bus shows correct data but your variable has wrong values, the problem is in your parsing code. If the bus itself shows glitches, the problem is electrical (noise, too-high clock speed, missing pull-ups on I2C).
-
-\textbf{Logging PID internals.} When you are stuck, log \textit{all} internal PID variables, not just the output. A useful logging line prints the timestamp, setpoint, measurement, error, P-term, I-term, D-term, raw output, and clamped output. Here is a minimal UART logging example:
+When you are stuck, log \textit{all} internal PID variables, not just the output. A useful logging line prints the timestamp, setpoint, measurement, error, P-term, I-term, D-term, raw output, and clamped output:
 
 \begin{verbatim}
 // Call once per control cycle (or every N cycles to reduce bandwidth)
@@ -191,10 +135,6 @@ void log_pid(uint32_t tick, float sp, float meas,
 \end{verbatim}
 
 Plot these in Python (or even Excel) after the test. The P/I/D breakdown immediately reveals which term is misbehaving. If the I-term is huge while the P-term is small, you have windup. If the D-term is noisy, you need filtering. This one technique will save you more time than any other.
-
-\textbf{Current measurement.} If you have a current-sense resistor or a hall-effect sensor, logging actual motor current is invaluable. The current tells you what the motor is \textit{actually doing}, as opposed to what you are \textit{commanding} it to do. A mismatch between commanded and actual current reveals driver issues, wiring problems, or motor faults.
-
-\textbf{Pro tip:} A \$15 logic analyzer (Saleae clone) is the single best debugging tool you can buy for competition robotics. It decodes I2C, SPI, UART, CAN, and PWM. Combined with PulseView (free software), it replaces hundreds of dollars of equipment for 90\% of debugging tasks.
 
 %-----------------------------------------------------------------------------
 \subsection{PID Tuning on Real Hardware: A Complete Worked Example}
@@ -351,54 +291,6 @@ Learn to recognize these patterns in your data logs. Each has a distinctive ``fi
 
 \vspace{1em}
 
-%-----------------------------------------------------------------------------
-\subsection{Building a Debugging Toolkit}
-%-----------------------------------------------------------------------------
-
-Over the course of a competition season, you should accumulate a set of debugging tools and habits. Here is what an experienced team's toolkit looks like:
-
-\textbf{Hardware tools:}
-\begin{itemize}
-    \item Multimeter (for voltage, current, and continuity checks)
-    \item Oscilloscope (even a cheap USB scope like the Hantek 6022BE is enough for PWM and timing)
-    \item Logic analyzer (Saleae clone + PulseView for I2C/SPI/CAN/UART decoding)
-    \item Spare batteries, connectors, and wires
-    \item A known-good motor and driver (for isolation testing)
-\end{itemize}
-
-\textbf{Software tools:}
-\begin{itemize}
-    \item A serial plotting tool (SerialPlot, PlotJuggler, or a simple Python script with matplotlib)
-    \item A parameter tuning interface---either a GUI or a simple serial command interface that lets you change $K_p$, $K_i$, $K_d$ without reflashing firmware
-    \item A logging framework that can dump all PID internal variables at loop rate
-    \item A test script that runs a standard step response and automatically computes overshoot, settling time, and steady-state error
-\end{itemize}
-
-\textbf{Software parameter tuning example.} A minimal serial command parser that lets you change gains at runtime:
-
-\begin{verbatim}
-// Parse "Kp=7.5" or "Ki=2.0" from UART input
-void parse_gain_command(const char *cmd) {
-    float val;
-    if (sscanf(cmd, "Kp=%f", &val) == 1) pid.Kp = val;
-    if (sscanf(cmd, "Ki=%f", &val) == 1) pid.Ki = val;
-    if (sscanf(cmd, "Kd=%f", &val) == 1) pid.Kd = val;
-}
-\end{verbatim}
-
-This saves you from the reflash-reboot-retest cycle, which can easily burn 2 minutes per iteration. Over 50 tuning iterations, that is over an hour saved.
-
-\textbf{The debugging log.} Keep a simple text file (or a notebook, or a shared document) that records every debugging session:
-\begin{itemize}
-    \item Date and time
-    \item Symptom observed
-    \item Hypothesis tested
-    \item What was changed
-    \item Result
-\end{itemize}
-
-This sounds tedious, but it prevents the most common meta-debugging problem: ``Wait, did we already try that? What happened?'' When three teammates are making changes at 11 PM the night before competition, a log is the difference between systematic progress and circular chaos.
-
 \vspace{0.5em}
 
-\textbf{Final thought.} Debugging is not a sign that you did something wrong. Every real system needs debugging. The difference between a good engineer and a frustrated student is not the absence of bugs---it is the speed at which bugs are found and fixed. The techniques in this chapter will not eliminate problems, but they will dramatically reduce the time from ``something is wrong'' to ``I know what is wrong and how to fix it.'' That speed is what wins competitions.
+\textbf{Final thought.} Debugging is not a sign that you did something wrong. Every real control system needs debugging. The difference between a good engineer and a frustrated student is not the absence of bugs---it is the speed at which bugs are found and fixed. The techniques in this chapter will not eliminate problems, but they will dramatically reduce the time from ``something is wrong'' to ``I know what is wrong and how to fix it.''
