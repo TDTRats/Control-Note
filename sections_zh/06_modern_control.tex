@@ -460,6 +460,8 @@ P_k &= Q + A_d^T P_{k+1} A_d - A_d^T P_{k+1} B_d K_k
 
 \textbf{参考：} TinyMPC 的完整论文和开源实现见 \texttt{tinympc.org}。C 实现不超过 1000 行，可在 ARM Cortex-M 微控制器上运行。附录中的 C++ 模块遵循同样的 Riccati + ADMM 结构。
 
+\textbf{非线性系统怎么办？}线性 MPC 假设 $\mathbf{x}_{k+1} = A_d \mathbf{x}_k + B_d \mathbf{u}_k$，当工作范围较宽时就不够了。\textbf{非线性 MPC（NMPC）}用完整非线性动力学 $\mathbf{x}_{k+1} = f(\mathbf{x}_k, \mathbf{u}_k)$ 替代线性模型，将 QP 变为非线性规划（NLP）。我们在非线性控制章节中详细讨论 NMPC，并通过一个具体的轨迹跟踪实例将其与线性 MPC 做正面对比。
+
 \subsection{基于状态空间的观测器设计}
 
 LQR（以及所有状态反馈）都要求你知道全部状态。但实际中往往只能测到一部分。\textbf{观测器}（Observer，也叫估计器）的作用就是从能拿到的测量值里把完整状态"猜"出来。

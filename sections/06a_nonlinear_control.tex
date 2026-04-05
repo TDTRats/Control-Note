@@ -345,6 +345,69 @@ In practice, the controller swings the pendulum with increasing amplitude until 
 \textbf{Why Lyapunov?} The Lyapunov approach is more general than the pendulum example suggests. The recipe is: (1) identify a positive-definite function $V(\mathbf{x})$ that is zero at the desired equilibrium; (2) choose the control input to make $\dot{V} \leq 0$; (3) invoke LaSalle's invariance principle to conclude convergence. This works for any system where you can find a suitable $V$---the hard part is finding one. For mechanical systems, physical energy is a natural starting point. For other systems, constructing Lyapunov functions is an art (and sometimes aided by sum-of-squares programming or other computational tools).
 
 %-----------------------------------------------------------------------------
+\subsection{Nonlinear MPC (NMPC)}
+%-----------------------------------------------------------------------------
+
+In the previous chapter we saw that linear MPC solves a quadratic program (QP) at each time step using a linear model $\mathbf{x}_{k+1} = A_d \mathbf{x}_k + B_d \mathbf{u}_k$. This works well near a single operating point. \textbf{Nonlinear MPC} extends the same receding-horizon idea to the full nonlinear dynamics:
+\begin{equation}
+\min_{\mathbf{u}[k], \ldots, \mathbf{u}[k+N-1]} \sum_{i=0}^{N-1} \ell\bigl(\mathbf{x}[k+i],\, \mathbf{u}[k+i]\bigr) + \ell_f\bigl(\mathbf{x}[k+N]\bigr)
+\end{equation}
+subject to:
+\begin{align}
+\mathbf{x}[k+i+1] &= f\bigl(\mathbf{x}[k+i],\, \mathbf{u}[k+i]\bigr) \quad \text{(\textbf{nonlinear} dynamics)} \\
+\mathbf{g}\bigl(\mathbf{x}[k+i],\, \mathbf{u}[k+i]\bigr) &\leq 0 \quad \text{(general nonlinear constraints)}
+\end{align}
+
+The cost $\ell(\cdot)$ and constraints $\mathbf{g}(\cdot)$ can also be nonlinear---penalizing geodesic distance on $\mathrm{SO}(3)$, enforcing collision avoidance with curved obstacles, etc.
+
+\textbf{The key difference:} Linear MPC solves a \textit{convex} QP---guaranteed global optimum in polynomial time. NMPC solves a \textit{nonconvex} nonlinear program (NLP)---there may be multiple local minima, and the solver may converge to a suboptimal one. This makes NMPC fundamentally harder but also fundamentally more capable.
+
+\textbf{Solution methods.} The most common approach is \textbf{Sequential Quadratic Programming (SQP)}: linearize the nonlinear dynamics and constraints around the current trajectory guess, solve the resulting QP (identical to a linear MPC subproblem), update the trajectory, and repeat. This is the same idea as iLQR/DDP from the Outlook chapter, but with inequality constraints handled via the QP. An alternative is \textbf{direct collocation}: transcribe the entire trajectory as decision variables of a large NLP and hand it to a solver like IPOPT.
+
+\vspace{0.5em}
+\begin{mdframed}[linewidth=1pt, innertopmargin=10pt, innerbottommargin=10pt]
+\textbf{Worked Example: Linear MPC vs NMPC on a Differential-Drive Robot}
+
+\vspace{0.3em}
+Consider a differential-drive robot tracking a circular path of radius $R = 2$~m. The nonlinear kinematics are:
+\[
+\dot{x} = v\cos\theta, \quad \dot{y} = v\sin\theta, \quad \dot{\theta} = \omega
+\]
+with inputs $u = [v,\, \omega]^T$ (linear and angular velocity).
+
+\textbf{Linear MPC approach.} Linearize around the current heading $\theta_0$:
+\[
+A = \begin{bmatrix} 0 & 0 & -v_0 \sin\theta_0 \\ 0 & 0 & v_0 \cos\theta_0 \\ 0 & 0 & 0 \end{bmatrix}, \quad
+B = \begin{bmatrix} \cos\theta_0 & 0 \\ \sin\theta_0 & 0 \\ 0 & 1 \end{bmatrix}
+\]
+This linearization is only valid when $\theta$ stays close to $\theta_0$. On a straight path or gentle curve, linear MPC works fine.
+
+\textbf{Where linear MPC fails.} On a tight circle ($R = 2$~m, $v = 1$~m/s), the heading changes by $\Delta\theta \approx v \cdot N \cdot T_s / R$ over the prediction horizon. With $N = 20$ and $T_s = 50$~ms, $\Delta\theta \approx 0.5$~rad ($\sim$29\textdegree). The linearized $\cos\theta_0$ and $\sin\theta_0$ are stale for the later prediction steps. The optimizer ``sees'' a straight-line model but the real trajectory curves---under-steering on the inside, over-steering on the outside.
+
+\textbf{NMPC approach.} Use the full nonlinear model directly. The optimizer propagates nonlinear kinematics forward, correctly capturing curvature. Result: much smaller cross-track error.
+
+\textbf{Numerical comparison (typical):}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+& \textbf{Linear MPC} & \textbf{NMPC} \\
+\midrule
+Cross-track error (tight circle) & 15--25 cm & $<$ 3 cm \\
+Heading tracking error & 5--10\textdegree & $<$ 1\textdegree \\
+Computation time per step (STM32H7) & 0.2 ms (QP) & 2--5 ms (SQP, 3 iters) \\
+Computation time per step (laptop) & $<$ 0.1 ms & 0.5--1 ms \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{The tradeoff:} NMPC gives 5--10$\times$ better tracking on nonlinear trajectories, but costs 10--25$\times$ more computation. For straight lines and gentle turns, linear MPC is sufficient. For tight maneuvers, nonlinear constraints, or large-angle control, NMPC is worth the cost.
+\end{mdframed}
+
+\textbf{When to use linear MPC vs NMPC.}\;Use \textbf{linear MPC} when the system operates near a fixed equilibrium or when computation is severely limited (bare-metal MCU at 1~kHz). Use \textbf{NMPC} when the system traverses a wide operating range, constraints are nonlinear, or you have sufficient computation (co-processor, or 50--200~Hz control loop).
+
+\textbf{Practical tools:} \href{https://web.casadi.org/}{CasADi} (symbolic NLP, Python/MATLAB/C++), \href{https://docs.acados.org/}{acados} (fast embedded NMPC with ARM code generation), MATLAB \texttt{fmincon}. For competition robotics, acados with code generation is the most practical path to real-time NMPC on an STM32.
+
+%-----------------------------------------------------------------------------
 \subsection{When to Use What: A Decision Guide}
 %-----------------------------------------------------------------------------
 

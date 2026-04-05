@@ -462,6 +462,8 @@ Warm starting & Possible & Natural (previous solution) \\
 
 \textbf{Reference:} The full TinyMPC paper and open-source implementation are at \texttt{tinympc.org}. The C implementation fits in under 1000 lines and runs on ARM Cortex-M microcontrollers. Our C++ module in the Appendix follows the same Riccati + ADMM structure.
 
+\textbf{What about nonlinear systems?} Linear MPC assumes $\mathbf{x}_{k+1} = A_d \mathbf{x}_k + B_d \mathbf{u}_k$, which breaks down when the operating range is wide. \textbf{Nonlinear MPC (NMPC)} replaces this with the full nonlinear dynamics $\mathbf{x}_{k+1} = f(\mathbf{x}_k, \mathbf{u}_k)$, turning the QP into a nonlinear program (NLP). We cover NMPC in detail in the Nonlinear Control chapter, where we compare it head-to-head with linear MPC on a concrete trajectory-tracking example.
+
 \subsection{Observer Design via State-Space}
 
 LQR (and state feedback in general) requires knowing all states. But in practice, you can only measure some of them. An \textbf{observer} (or \textbf{estimator}) reconstructs the full state vector from the available measurements.

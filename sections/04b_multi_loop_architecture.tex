@@ -83,7 +83,7 @@ Position & 50--200~Hz & PD or PID \\
 \end{tabular}
 \end{center}
 
-The nested block diagram looks like this. The position controller outputs a velocity setpoint. The velocity controller outputs a current setpoint. The current controller outputs a voltage (PWM duty). Each inner loop ``wraps around'' its own plant dynamics, taming them before the outer loop ever sees them.
+The nested block diagram looks like this. The position controller outputs a velocity setpoint. The velocity controller outputs a current (torque) command. For CAN-based ESCs (C610/C620), this current command is sent over CAN to the ESC, which handles the internal current loop and FOC commutation. For simpler drivers, the current controller outputs a voltage (PWM duty). Either way, each inner loop ``wraps around'' its own plant dynamics, taming them before the outer loop ever sees them.
 
 \begin{equation}
 r_\theta \;\xrightarrow{C_\theta}\; r_\omega \;\xrightarrow{C_\omega}\; r_i \;\xrightarrow{C_i}\; V \;\xrightarrow{\text{motor}}\; i,\;\omega,\;\theta
@@ -250,7 +250,7 @@ Supervisor FSM & 100~Hz & Low & Same tick as trajectory \\
 \end{tabular}
 \end{center}
 
-\textbf{Priority scheduling.} The current loop is the highest priority because if it misses a deadline, the motor current is uncontrolled for an entire PWM cycle---potentially dangerous. The velocity loop is next. The position loop and planner are lowest priority because they change slowly and can tolerate occasional jitter.
+\textbf{Priority scheduling.} When the current loop runs on your MCU (simple H-bridge drivers), it is the highest priority. When using CAN-based ESCs (C610/C620), the current loop runs inside the ESC --- so on your MCU, the CAN TX/RX and velocity loop become the highest-priority tasks. The position loop and planner are lowest priority because they change slowly and can tolerate occasional jitter.
 
 \textbf{Why jitter matters.} Recall the PID derivative term: $D = K_d \cdot (y_{\text{prev}} - y) / \Delta t$. If $\Delta t$ fluctuates because a higher-priority interrupt delayed your loop, the derivative output fluctuates too---even if the measurement is perfectly smooth. For a loop running at 1~kHz, a 10\% jitter ($\pm 0.1$~ms) introduces 10\% noise on the derivative. This is why deterministic timing is not optional---it is a correctness requirement.
 
@@ -297,8 +297,7 @@ Let us trace the full data flow of a competition gimbal pitch axis, from sensor 
     \item \textbf{EKF} runs at 1~kHz. It fuses the filtered gyroscope with the accelerometer (corrected for centripetal acceleration) to produce an attitude estimate $\hat{\theta}$ (pitch angle) and a bias-corrected angular velocity $\hat{\omega}$.
     \item \textbf{Position PID} runs at 500~Hz. It computes $e_\theta = \theta_{\text{cmd}} - \hat{\theta}$ and outputs a velocity command $\omega_{\text{cmd}}$. This is typically a PD controller (or PID with a very small $K_i$), because the position plant already contains an integrator ($\dot{\theta} = \omega$).
     \item \textbf{Velocity PID} runs at 1~kHz. It computes $e_\omega = \omega_{\text{cmd}} - \hat{\omega}$ and outputs a current command $i_{\text{cmd}}$. This uses derivative-on-measurement to avoid setpoint kick when the position controller changes $\omega_{\text{cmd}}$ abruptly.
-    \item \textbf{Current PI} runs at 10~kHz inside the motor ESC (C620). It computes $e_i = i_{\text{cmd}} - i_{\text{meas}}$ and outputs a PWM duty cycle. This is a PI controller (no D) because the electrical plant $L\,di/dt = V - Ri - K_e\omega$ is first-order in $i$ when $\omega$ is treated as a slow disturbance.
-    \item \textbf{Motor driver} converts the duty cycle to three-phase voltages via space-vector modulation at 20~kHz switching frequency.
+    \item \textbf{Current PI + FOC} runs at $\sim$10~kHz inside the C620 ESC. Your MCU sends $i_{\text{cmd}}$ as a 16-bit signed value over CAN; the ESC handles the current loop, field-oriented control, and three-phase commutation internally. It reports back the actual current, rotor angle, and velocity over CAN.
 \end{enumerate}
 
 \textbf{Timing summary:}

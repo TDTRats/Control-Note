@@ -345,6 +345,69 @@ E = \frac{1}{2}ml^2\dot{\theta}^2 - mgl\cos(\theta)
 \textbf{为什么用李雅普诺夫？}李雅普诺夫方法比倒立摆例子所展示的更一般。方法步骤是：(1) 找到一个在期望平衡点为零的正定函数 $V(\mathbf{x})$；(2) 选择控制输入使 $\dot{V} \leq 0$；(3) 调用 LaSalle 不变性原理得出收敛结论。这对任何你能找到合适 $V$ 的系统都有效——难点在于找到一个。对于机械系统，物理能量是自然的起点。对于其他系统，构造李雅普诺夫函数是一门艺术（有时可以借助平方和规划或其他计算工具来辅助）。
 
 %-----------------------------------------------------------------------------
+\subsection{非线性 MPC（NMPC）}
+%-----------------------------------------------------------------------------
+
+上一章中我们看到线性 MPC 在每个时间步求解一个二次规划（QP），使用线性模型 $\mathbf{x}_{k+1} = A_d \mathbf{x}_k + B_d \mathbf{u}_k$。这在单个工作点附近表现良好。\textbf{非线性 MPC} 将同样的滚动时域思想扩展到完整非线性动力学：
+\begin{equation}
+\min_{\mathbf{u}[k], \ldots, \mathbf{u}[k+N-1]} \sum_{i=0}^{N-1} \ell\bigl(\mathbf{x}[k+i],\, \mathbf{u}[k+i]\bigr) + \ell_f\bigl(\mathbf{x}[k+N]\bigr)
+\end{equation}
+约束为：
+\begin{align}
+\mathbf{x}[k+i+1] &= f\bigl(\mathbf{x}[k+i],\, \mathbf{u}[k+i]\bigr) \quad \text{（\textbf{非线性}动力学）} \\
+\mathbf{g}\bigl(\mathbf{x}[k+i],\, \mathbf{u}[k+i]\bigr) &\leq 0 \quad \text{（一般非线性约束）}
+\end{align}
+
+代价 $\ell(\cdot)$ 和约束 $\mathbf{g}(\cdot)$ 也可以是非线性的——用 $\mathrm{SO}(3)$ 上的测地距离代替欧几里得距离，用曲面障碍物做避障等。
+
+\textbf{核心区别：}线性 MPC 求解\textit{凸} QP——保证多项式时间全局最优。NMPC 求解\textit{非凸}非线性规划（NLP）——可能存在多个局部极小值。这使得 NMPC 从根本上更难，但也从根本上更强。
+
+\textbf{求解方法。}最常用的是\textbf{序列二次规划（SQP）}：在当前轨迹猜测处线性化动力学和约束，求解得到的 QP（与线性 MPC 子问题相同），更新轨迹，重复。这与展望章节中 iLQR/DDP 的思路一致，但通过 QP 处理不等式约束。另一种方法是\textbf{直接配点法}：将整条轨迹转写为大型 NLP 的决策变量，交给 IPOPT 等通用求解器。
+
+\vspace{0.5em}
+\begin{mdframed}[linewidth=1pt, innertopmargin=10pt, innerbottommargin=10pt]
+\textbf{实例对比：差速驱动机器人上的线性 MPC vs NMPC}
+
+\vspace{0.3em}
+考虑一个差速驱动机器人跟踪半径 $R = 2$~m 的圆形路径。非线性运动学为：
+\[
+\dot{x} = v\cos\theta, \quad \dot{y} = v\sin\theta, \quad \dot{\theta} = \omega
+\]
+输入 $u = [v,\, \omega]^T$。
+
+\textbf{线性 MPC 的做法。}在当前航向 $\theta_0$ 处线性化：
+\[
+A = \begin{bmatrix} 0 & 0 & -v_0 \sin\theta_0 \\ 0 & 0 & v_0 \cos\theta_0 \\ 0 & 0 & 0 \end{bmatrix}, \quad
+B = \begin{bmatrix} \cos\theta_0 & 0 \\ \sin\theta_0 & 0 \\ 0 & 1 \end{bmatrix}
+\]
+走直线或缓弯时没问题。
+
+\textbf{线性 MPC 失效的场景。}在紧凑圆弧上（$R = 2$~m，$v = 1$~m/s），预测时域内航向变化 $\Delta\theta \approx 0.5$~rad（$\sim$29\textdegree）。线性化的 $\cos\theta_0$、$\sin\theta_0$ 已严重失准。优化器"看到"直线模型，真实轨迹却是弯的——弯内侧转向不足、弯外侧转向过度。
+
+\textbf{NMPC 的做法。}直接使用完整非线性模型。优化器正确捕捉曲率，横向误差大幅减小。
+
+\textbf{数值对比（典型值）：}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+& \textbf{线性 MPC} & \textbf{NMPC} \\
+\midrule
+横向跟踪误差（紧凑圆弧） & 15--25 cm & $<$ 3 cm \\
+航向跟踪误差 & 5--10\textdegree & $<$ 1\textdegree \\
+每步计算时间（STM32H7） & 0.2 ms（QP） & 2--5 ms（SQP，3 次迭代） \\
+每步计算时间（笔记本） & $<$ 0.1 ms & 0.5--1 ms \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{取舍：}NMPC 在非线性轨迹上精度高 5--10 倍，但计算开销大 10--25 倍。走直线加缓弯用线性 MPC 够了。紧凑机动、非线性约束避障或大角度控制用 NMPC。
+\end{mdframed}
+
+\textbf{何时用线性 MPC vs NMPC。}\;系统在固定平衡点附近运行或算力严重受限时用\textbf{线性 MPC}。系统工作范围很宽、约束非线性或算力充裕时用\textbf{NMPC}。
+
+\textbf{实用工具：}\href{https://web.casadi.org/}{CasADi}（符号 NLP，Python/MATLAB/C++）、\href{https://docs.acados.org/}{acados}（快速嵌入式 NMPC，ARM 代码生成）、MATLAB \texttt{fmincon}。竞赛机器人推荐 acados 配合代码生成，在 STM32 上实现实时 NMPC。
+
+%-----------------------------------------------------------------------------
 \subsection{该用什么方法：决策指南}
 %-----------------------------------------------------------------------------
 

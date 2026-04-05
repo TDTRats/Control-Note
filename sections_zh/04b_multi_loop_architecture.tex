@@ -83,7 +83,7 @@ J \frac{d\omega}{dt} = K_t i - b\omega - \tau_{\text{load}}
 \end{tabular}
 \end{center}
 
-嵌套框图长这样：位置控制器输出速度设定值，速度控制器输出电流设定值，电流控制器输出电压（PWM 占空比）。每个内环"包裹"住它自己的被控对象动态，在外环看到之前就把它驯服了。
+嵌套框图长这样：位置控制器输出速度设定值，速度控制器输出电流（力矩）指令。对于 CAN 总线电调（C610/C620），这个电流指令通过 CAN 发给电调，电调内部处理电流环和 FOC 换相。对于简单驱动器，电流控制器输出电压（PWM 占空比）。无论哪种方式，每个内环都"包裹"住自己的被控对象动态，在外环看到之前就把它驯服了。
 
 \begin{equation}
 r_\theta \;\xrightarrow{C_\theta}\; r_\omega \;\xrightarrow{C_\omega}\; r_i \;\xrightarrow{C_i}\; V \;\xrightarrow{\text{motor}}\; i,\;\omega,\;\theta
@@ -250,7 +250,7 @@ EKF 更新 & 1~kHz & 中 & 与速度环同步 \\
 \end{tabular}
 \end{center}
 
-\textbf{优先级调度。}电流环优先级最高，因为如果它错过截止时间，电机电流在整个 PWM 周期内都是失控的——可能很危险。速度环其次。位置环和规划器优先级最低，因为它们变化慢，偶尔有点抖动可以容忍。
+\textbf{优先级调度。}当电流环跑在你的 MCU 上（简单 H 桥驱动器）时，它是最高优先级。当使用 CAN 总线电调（C610/C620）时，电流环在电调内部运行——所以在你的 MCU 上，CAN 收发和速度环成为最高优先级任务。位置环和规划器优先级最低，因为它们变化慢，偶尔有点抖动可以容忍。
 
 \textbf{为什么时序抖动很重要。}回想 PID 微分项：$D = K_d \cdot (y_{\text{prev}} - y) / \Delta t$。如果 $\Delta t$ 因为更高优先级中断延迟了你的回路而波动，即使测量值完全平滑，微分输出也会波动。对于跑在 1~kHz 的回路，10\% 的抖动（$\pm 0.1$~ms）会给微分带来 10\% 的噪声。所以确定性的时序不是可选的——它是正确性要求。
 
@@ -297,7 +297,7 @@ EKF 更新 & 1~kHz & 中 & 与速度环同步 \\
     \item \textbf{EKF} 以 1~kHz 运行。它融合滤波后的陀螺仪与加速度计（已校正向心加速度），输出姿态估计 $\hat{\theta}$（俯仰角）和偏置校正后的角速度 $\hat{\omega}$。
     \item \textbf{位置 PID} 以 500~Hz 运行。计算 $e_\theta = \theta_{\text{cmd}} - \hat{\theta}$，输出速度指令 $\omega_{\text{cmd}}$。通常是 PD 控制器（或 $K_i$ 很小的 PID），因为位置被控对象本身包含一个积分器（$\dot{\theta} = \omega$）。
     \item \textbf{速度 PID} 以 1~kHz 运行。计算 $e_\omega = \omega_{\text{cmd}} - \hat{\omega}$，输出电流指令 $i_{\text{cmd}}$。使用微分作用于测量值，避免位置控制器突变 $\omega_{\text{cmd}}$ 时产生的设定值尖峰。
-    \item \textbf{电流 PI} 以 10~kHz 在电机电调（C620）内部运行。计算 $e_i = i_{\text{cmd}} - i_{\text{meas}}$，输出 PWM 占空比。这是 PI 控制器（没有 D），因为电气被控对象 $L\,di/dt = V - Ri - K_e\omega$ 对 $i$ 是一阶的（把 $\omega$ 当作慢变扰动）。
+    \item \textbf{电流 PI + FOC} 以 $\sim$10~kHz 在 C620 电调内部运行。你的 MCU 通过 CAN 发送 16 位有符号 $i_{\text{cmd}}$；电调内部处理电流环、磁场定向控制和三相换相，并通过 CAN 回传实际电流、转子角度和转速。
     \item \textbf{电机驱动}通过空间矢量调制以 20~kHz 开关频率将占空比转换为三相电压。
 \end{enumerate}
 

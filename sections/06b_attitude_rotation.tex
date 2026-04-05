@@ -1,10 +1,12 @@
 %=============================================================================
-\section{Attitude and Rotation Representation}
+\section{Appendix: Attitude and Rotation Representation}
 %=============================================================================
 
-Before we can estimate or control orientation (Ch6 uses Euler angles and quaternions extensively), we need a solid foundation in how rotations work mathematically. This chapter builds that foundation from scratch.
+If you encountered Euler angles, rotation matrices, or quaternions in the main chapters and wanted to really \textit{understand} them---not just use them---this is where to find that understanding.
 
-Why does this matter for robotics? Every time you read an IMU, command a gimbal, or fuse sensor data in an EKF, you are working with rotations. Get the math wrong---mix up a convention, compose rotations in the wrong order, or hit a singularity---and your robot will do something unexpected. The good news: the core ideas are not hard. They just need to be understood once, carefully.
+Let us start with a question. You have a robot in 3D space. It can point in any direction. How do you describe ``which way it is pointing'' with numbers? This sounds simple, but it turns out to be one of the deepest and most subtle problems in robotics mathematics. There are at least four different ways to do it, each with different tradeoffs, and choosing the wrong one can break your EKF, introduce singularities into your controller, or silently give you mirrored rotations.
+
+We will build up the answer step by step, starting from something you already know (coordinate axes) and ending with something that initially seems mysterious (quaternions). Along the way, we will see \textit{why} each representation exists---not just how to compute with it, but what problem it solves that the previous one could not.
 
 %-----------------------------------------------------------------------------
 \subsection{Coordinate Frames}
@@ -61,14 +63,16 @@ The central question of attitude representation is: \textit{how do we describe t
 
 \subsubsection{Definition and Properties}
 
-A rotation matrix $R$ is a $3 \times 3$ matrix that belongs to the \textbf{special orthogonal group} $\mathrm{SO}(3)$:
+Let us think about what a rotation actually \textit{does}. We have three basis vectors $\hat{x}$, $\hat{y}$, $\hat{z}$. After a rotation, each one points somewhere new. If we write down where each one ends up, we get three new vectors---and we can stack them as columns of a matrix. That matrix \textit{is} the rotation matrix $R$.
+
+So $R = [\mathbf{r}_1 \; \mathbf{r}_2 \; \mathbf{r}_3]$ where $\mathbf{r}_1$ is where $\hat{x}$ went, $\mathbf{r}_2$ is where $\hat{y}$ went, $\mathbf{r}_3$ is where $\hat{z}$ went. Notice that since rotation preserves lengths and angles, these three columns must still be mutually perpendicular unit vectors. This gives us the formal definition:
 \begin{equation}
-\mathrm{SO}(3) = \{ R \in \mathbb{R}^{3 \times 3} \mid R^T R = I, \; \det(R) = +1 \}
+R \in \mathrm{SO}(3) = \{ R \in \mathbb{R}^{3 \times 3} \mid R^T R = I, \; \det(R) = +1 \}
 \end{equation}
 
-The condition $R^T R = I$ (orthogonality) means the columns of $R$ are mutually perpendicular unit vectors. The condition $\det(R) = +1$ distinguishes proper rotations from reflections (which have $\det = -1$).
+The condition $R^T R = I$ (orthogonality) encodes the ``perpendicular unit vectors'' requirement. The condition $\det(R) = +1$ distinguishes proper rotations from reflections (which have $\det = -1$---they flip a mirror, not rotate).
 
-\textbf{Physical meaning:} Each column of $R$ tells you where the corresponding original basis vector ends up after the rotation. If $R = [\mathbf{r}_1 \; \mathbf{r}_2 \; \mathbf{r}_3]$, then $\mathbf{r}_1$ is the image of $\hat{x}$, $\mathbf{r}_2$ is the image of $\hat{y}$, and $\mathbf{r}_3$ is the image of $\hat{z}$. Equivalently, the \textit{rows} of $R$ are the body-frame axes expressed in world coordinates.
+\textbf{A useful dual reading:} We just said the \textit{columns} of $R$ are the rotated basis vectors expressed in the original frame. Equivalently, the \textit{rows} of $R$ are the original basis vectors expressed in the rotated frame. Both readings are correct---and knowing both will save you when debugging coordinate transformations.
 
 The three elementary rotation matrices (counterclockwise when looking from the positive axis toward the origin) are:
 
@@ -88,13 +92,15 @@ Note the ``odd one out'': $R_y$ has the $-\sin\theta$ in the top-right and $+\si
 
 \subsubsection{What Rotation Matrices Actually Do}
 
-There are two ways to interpret the same rotation matrix, and confusing them is a guaranteed source of bugs.
+Here is a question that trips up nearly everyone the first time: does the rotation matrix rotate the \textit{vector}, or does it rotate the \textit{coordinate frame}?
 
-\textbf{Interpretation 1: Active (alibi) rotation.} The matrix physically rotates a vector to a new position in the \textit{same} coordinate frame. Think of grabbing a vector and spinning it.
+The answer is: both. And understanding this duality is the key to never getting confused again.
 
-\textbf{Interpretation 2: Passive (alias) rotation.} The matrix re-expresses the same physical vector in a \textit{different} coordinate frame. The vector does not move; we just describe it from a new viewpoint.
+\textbf{Interpretation 1: Active rotation.} We can think of $R\mathbf{v}$ as physically picking up the vector $\mathbf{v}$ and spinning it to a new position, while the coordinate frame stays fixed. The vector moves; the axes do not.
 
-Mathematically, the active rotation of $\mathbf{v}$ by angle $\theta$ about the $z$-axis and the passive transformation from frame $A$ to frame $B$ (where $B$ is rotated by $-\theta$ relative to $A$) use the same matrix. The difference is purely in interpretation.
+\textbf{Interpretation 2: Passive rotation.} We can also think of $R\mathbf{v}$ as re-expressing the same physical vector---which has not moved at all---in a different coordinate frame. The vector stays; the axes rotate.
+
+These are two ways of looking at the same matrix multiplication. Mathematically, actively rotating a vector by $\theta$ is the same as passively rotating the coordinate frame by $-\theta$. The difference is purely conceptual, but getting it wrong means every vector you transform will point the wrong way.
 
 For robotics, the most important convention is:
 \begin{equation}
@@ -196,9 +202,9 @@ The use of $\operatorname{atan2}$ (which takes two arguments and returns the ang
 
 \subsubsection{Gimbal Lock}
 
-Gimbal lock is the Achilles' heel of Euler angles, and it is the single most important reason to learn quaternions.
+Euler angles seem perfect: three intuitive numbers for three degrees of freedom. So why does every serious robotics system eventually abandon them? Let us see what goes wrong.
 
-\textbf{What is it?} When the pitch angle reaches $\theta = \pm 90°$, the yaw and roll axes become aligned---they rotate about the same physical axis. The system loses one degree of freedom. You can still represent the current orientation, but you cannot distinguish certain rotations near the singularity, and small changes in orientation cause wild jumps in the Euler angles.
+\textbf{What is gimbal lock?} When the pitch angle reaches $\theta = \pm 90°$, something strange happens: the yaw and roll axes become aligned---they rotate about the same physical axis. The system loses one degree of freedom. You can still represent the current orientation, but you cannot distinguish certain rotations near the singularity, and small changes in orientation cause wild jumps in the Euler angles.
 
 \textbf{Mathematical demonstration.} Set $\theta = 90°$ (so $\cos\theta = 0$ and $\sin\theta = 1$) in the rotation matrix:
 
@@ -256,7 +262,11 @@ This motivates the search for a singularity-free representation: quaternions.
   \caption{Axis-angle rotation: vector $\mathbf{v}$ is rotated by angle $\theta$ about axis $\hat{n}$ to produce $\mathbf{v}'$. The dashed lines show the projection onto the rotation axis.}
 \end{figure}
 
-Before jumping to quaternions, we need one more concept. \textbf{Euler's rotation theorem} states that any rotation of a rigid body in 3D can be described by a single axis $\hat{n}$ (a unit vector) and a single angle $\theta$. No matter how complicated the rotation, there is always one axis that stays fixed, and the body has simply rotated around it.
+Before we can understand quaternions, we need to see rotations from a different angle---pun intended.
+
+Think about it: we have been describing rotations as sequences of three elementary rotations (yaw, pitch, roll). But is that really the simplest description? \textbf{Euler's rotation theorem} tells us something remarkable: \textit{any} rotation of a rigid body in 3D, no matter how complicated, can always be described by a single axis $\hat{n}$ and a single angle $\theta$. There is always one axis that stays fixed, and the body has simply rotated around it. Three rotations collapse into one.
+
+Why does this matter? Because it means a rotation is fundamentally a \textit{two-piece} object: an axis and an angle. Not three angles (Euler), not nine numbers (matrix). Two pieces. And quaternions are the most elegant way to package those two pieces into a form that composes cleanly.
 
 This leads to \textbf{Rodrigues' rotation formula}, which rotates a vector $\mathbf{v}$ by angle $\theta$ about axis $\hat{n}$:
 \begin{equation}
@@ -287,19 +297,21 @@ This matrix has the property that $[\hat{n}]_\times \mathbf{v} = \hat{n} \times 
 
 \subsubsection{From Axis-Angle to Quaternions}
 
-The axis-angle representation is intuitive, but it does not compose nicely: combining two axis-angle rotations requires going through rotation matrices or trigonometric identities. Quaternions solve this problem.
+We now have a clean description of any rotation: an axis $\hat{n}$ and an angle $\theta$. But there is a practical problem. Suppose we want to combine two rotations, each given as axis-angle pairs. There is no simple formula for the resulting axis and angle---we would have to convert to rotation matrices, multiply, and convert back. Can we do better?
 
-A \textbf{unit quaternion} encodes the same axis-angle rotation $(\hat{n}, \theta)$ as a four-component object:
+This is exactly the problem that quaternions solve. A \textbf{unit quaternion} packages the axis-angle information into four numbers that compose via a single algebraic operation (the Hamilton product, defined below):
 \begin{equation}
 q = \begin{bmatrix} \cos(\theta/2) \\ \sin(\theta/2) \, \hat{n} \end{bmatrix}
 = \begin{bmatrix} q_w \\ q_x \\ q_y \\ q_z \end{bmatrix}
 \end{equation}
 
-where $q_w$ is the scalar (real) part and $(q_x, q_y, q_z)$ is the vector (imaginary) part.
+where $q_w = \cos(\theta/2)$ is the scalar part and $(q_x, q_y, q_z) = \sin(\theta/2)\,\hat{n}$ is the vector part.
 
-\textbf{Why $\theta/2$ and not $\theta$?} This is the key insight. Quaternions live in a space where the algebraic structure (the Hamilton product, defined below) naturally composes rotations---but this only works with the half-angle encoding. The deep reason is topological: $\mathrm{SO}(3)$ is not simply connected, and the unit quaternion sphere $S^3$ is its \textbf{double cover}. This means that $q$ and $-q$ represent the \textit{same} rotation (negating all four components gives the same axis-angle pair with $\theta$ shifted by $2\pi$). This double-cover property is the price we pay for a singularity-free representation.
+\textbf{Wait---why $\theta/2$ and not $\theta$?} This is the deepest insight in the entire chapter. If we used $\theta$ directly, the algebraic composition would not work. The half-angle is what makes the Hamilton product correctly compose rotations. You can think of it this way: to rotate in 3D, a quaternion needs to act from \textit{both sides} of a vector (the ``sandwich product'' $q \mathbf{v} q^*$, which we will see shortly), and each side contributes half the rotation. Hence $\theta/2$.
 
-The set of unit quaternions satisfies $|q| = \sqrt{q_w^2 + q_x^2 + q_y^2 + q_z^2} = 1$, forming the 3-sphere $S^3$ in four-dimensional space.
+A consequence of the half-angle encoding is that $q$ and $-q$ represent the \textit{same} rotation---negating all four components shifts $\theta$ by $2\pi$, which is a full turn back to the start. This is the \textbf{double cover} property: the quaternion sphere $S^3$ wraps around $\mathrm{SO}(3)$ twice. It is a small price to pay for a singularity-free representation.
+
+The set of unit quaternions satisfies $|q| = \sqrt{q_w^2 + q_x^2 + q_y^2 + q_z^2} = 1$.
 
 \subsubsection{Quaternion Operations}
 
@@ -409,3 +421,5 @@ Axis-angle & 4 (axis + angle) & At $\theta = 0$ & Must convert & Intuitive under
 In practice, you will often use all four in the same project: quaternions as the internal state of your EKF, rotation matrices for coordinate transformations in your kinematics code, Euler angles for displaying the current attitude to the operator (``yaw: 45\textdegree, pitch: 10\textdegree, roll: 2\textdegree''), and axis-angle for specifying desired rotations in your trajectory planner (``rotate 30\textdegree{} about the vertical axis'').
 
 With this foundation, you are now equipped to understand the quaternion-based EKF in the Modern Control chapter. The key insight is: \textit{use quaternions for computation, convert to Euler angles only for display.}
+
+\textbf{Further reading.} For a deeper and beautifully illustrated treatment of quaternions and rotations, we highly recommend Krasjet's \textit{Quaternion and 3D Rotation} (\href{https://krasjet.github.io/quaternion/quaternion.pdf}{krasjet.github.io/quaternion}). It covers the geometric intuition behind quaternions, the double-cover relationship with $\mathrm{SO}(3)$, and interpolation methods in far more detail than this appendix, with excellent visualizations throughout.

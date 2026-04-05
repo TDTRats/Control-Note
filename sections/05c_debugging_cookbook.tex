@@ -83,9 +83,9 @@ You command the motor to move. Nothing happens. This is either the easiest or th
 \begin{enumerate}
     \item \textbf{Is the motor powered?} Measure the voltage at the motor terminals with a multimeter. This sounds obvious, but blown fuses, loose connectors, and dead batteries account for a shocking number of ``my controller doesn't work'' complaints.
 
-    \item \textbf{Is the enable pin active?} Many motor drivers (DRV8301, C610/C620, L298N) have an enable pin that defaults to \textit{disabled}. If you forgot to pull it high in your initialization code, the driver ignores all PWM commands.
+    \item \textbf{Is the communication link alive?} For CAN-based ESCs (C610/C620), check: is the CAN bus initialized? Are you sending to the correct CAN ID? Is the ESC's status LED blinking normally? Use a logic analyzer or CAN debugger to verify frames are actually on the bus. For PWM-based drivers, check the enable pin and verify the PWM signal with an oscilloscope.
 
-    \item \textbf{Is the PWM polarity correct?} Positive duty cycle should produce positive torque in the direction you expect. Some drivers invert the polarity, or your timer configuration may produce inverted PWM.
+    \item \textbf{Is the command polarity correct?} A positive current command should produce positive torque in the direction you expect. If the motor runs away instantly, your sign convention is inverted. For C610/C620, the 16-bit current command is signed: positive and negative correspond to opposite torque directions.
 
     \item \textbf{Is the control loop actually running?} Toggle a GPIO pin inside your control loop ISR. Check on a scope whether it toggles at the expected rate. If it does not toggle at all, your timer interrupt is not configured correctly.
 
@@ -104,7 +104,7 @@ Many debugging sessions go wrong because the student is tuning PID gains when th
 
 This is the single most valuable debugging technique. It takes two minutes and saves hours.
 
-\textbf{Step 1:} Disconnect the controller. Command a constant open-loop duty cycle (e.g., 30\% PWM). Observe the motor.
+\textbf{Step 1:} Disconnect the controller. Command a constant open-loop torque (e.g., send a fixed current command over CAN for C610/C620, or a constant PWM duty for simpler drivers). Observe the motor.
 \begin{itemize}
     \item If the motor spins smoothly and steadily: the problem is in your controller or software. Go to the software/control checks.
     \item If the motor vibrates, stalls, or behaves erratically: the problem is mechanical or electrical. Do not touch your code yet.
@@ -163,7 +163,7 @@ int32_t read_encoder(void) {
 
 Your eyes and ears are poor measurement instruments. ``It seems to vibrate'' tells you nothing quantitative. The right tools make invisible problems visible.
 
-\textbf{PWM duty cycle verification.} Put an oscilloscope probe on the motor phase output. Measure the duty cycle. Does it match what your software commands? If your code says 50\% duty and the scope shows 30\%, your timer configuration is wrong. This takes 30 seconds and eliminates an entire class of bugs.
+\textbf{Command verification.} For CAN-based systems (C610/C620), use a CAN debugger or logic analyzer to decode the frames on the bus. Verify: (1) your MCU is transmitting at the expected rate (typically 1~kHz), (2) the CAN ID matches the ESC's expected ID, (3) the current command bytes contain the values you intend. For PWM-based drivers, put an oscilloscope probe on the motor phase output and verify the duty cycle matches your software command.
 
 \textbf{Control loop timing.} Toggle a GPIO pin at the start of your ISR, and clear it at the end. On the scope, the pulse width is your ISR execution time, and the period is your loop period. Both should match your design. If the pulse width is close to the period, your ISR is too slow---it will miss deadlines and the control quality degrades. Here is the code:
 
@@ -206,12 +206,12 @@ Theory is nice, but you need a concrete procedure you can follow step by step on
 \subsubsection{System: DJI 3508 Motor Velocity Control}
 %- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-The DJI 3508 with C620 ESC is ubiquitous in RoboMaster competitions. The relevant parameters:
+The DJI 3508 motor with C620 ESC (brushless motor speed controller) is ubiquitous in RoboMaster competitions. The C620 is a CAN-bus device: your MCU sends a 16-bit signed current (torque) command over CAN, and the C620 handles the internal current loop, FOC commutation, and encoder reading. It reports back the rotor angle, velocity, and actual current --- also over CAN. The relevant parameters:
 \begin{itemize}
-    \item Rotor inertia: approximately $J = 0.0005$~kg$\cdot$m$^2$
+    \item Rotor inertia (after 19:1 gearbox): approximately $J = 0.0005$~kg$\cdot$m$^2$
     \item Torque constant: $K_t \approx 0.3$~N$\cdot$m/A
-    \item Winding resistance: $R \approx 0.5~\Omega$
-    \item Current loop: handled internally by the C620 ESC. We treat it as a fast inner loop (bandwidth $\sim$5~kHz) and design only the outer velocity loop.
+    \item CAN protocol: one TX frame carries current commands for 4 motors; one RX frame per motor carries angle, velocity, and current feedback
+    \item Current loop: handled internally by the C620 at $\sim$10~kHz. We treat it as a fast inner loop and design only the outer velocity loop on our MCU.
     \item Goal: velocity tracking with $<5\%$ overshoot, $<200$~ms settling time.
 \end{itemize}
 
@@ -310,81 +310,6 @@ Learn to recognize these patterns in your data logs. Each has a distinctive ``fi
 \textbf{Cause:} Variable delay in sensor readings means the controller is acting on stale data. If the delay is comparable to the loop period, it adds significant phase lag. The phase margin decreases, and the system approaches instability. Under heavy bus load, messages queue up, delays increase, and the system goes unstable.
 
 \textbf{Fix:} Reduce the controller bandwidth (lower $K_p$ and $K_d$) so the loop is robust to the delay. Alternatively, add explicit delay compensation using a Smith predictor (Ch4), which models the known delay and compensates for it in the control law.
-
-%-----------------------------------------------------------------------------
-\subsection{Pre-Competition Checklist}
-%-----------------------------------------------------------------------------
-
-Run through this list the night before and the morning of every competition. It takes 15 minutes and prevents 80\% of match-day failures.
-
-\begin{enumerate}
-    \item \textbf{Power.} Charge all batteries to full. Measure the voltage with a multimeter---do not trust the charger indicator. Bring spares.
-
-    \item \textbf{Mechanical.} Check every setscrew, every bolt, every belt tension. Vibration loosens fasteners. If it moved during practice, it will fall off during the match. Apply Loctite to critical fasteners.
-
-    \item \textbf{Wiring.} Tug-test every connector. A connector that ``feels'' secure but is not fully seated will make intermittent contact, causing the most maddening bugs. Secure loose wires with zip ties or tape so they cannot snag.
-
-    \item \textbf{Communication.} Power on all modules and verify CAN/UART heartbeat messages appear. Check that no CAN IDs conflict. Verify firmware versions match what you tested with.
-
-    \item \textbf{Sensors.} Zero and calibrate each sensor. Check IMU bias, encoder zero position, current sense offset. Log 2 seconds of stationary data---does it look clean?
-
-    \item \textbf{Control loops.} Run each axis through its full range of motion. Verify no oscillation, no stalls, no unexpected behavior at the extremes. Pay special attention to transitions between operating modes (e.g., from stationary to spinning, from free motion to contact).
-
-    \item \textbf{Emergency stops.} Verify the kill switch works. Verify the software watchdog triggers correctly. Verify that losing communication causes the robot to stop (not run away at full speed).
-
-    \item \textbf{Log review.} Do one complete test run with full logging. Review the logs. Are all signals within expected ranges? Any anomalies?
-\end{enumerate}
-
-\vspace{0.5em}
-\begin{mdframed}[linewidth=1pt, innertopmargin=10pt, innerbottommargin=10pt]
-\textbf{The 30-Second Smoke Test}
-
-\vspace{0.3em}
-When you are rushed and cannot do the full checklist, do this minimum viable test:
-\begin{enumerate}[nosep]
-    \item Power on. Wait 3 seconds. Listen for abnormal sounds.
-    \item Command each motor to 10\% speed. Does it respond? Correct direction?
-    \item Command 50\% speed. Smooth? No oscillation?
-    \item Command full speed. No vibration? Power supply holding up?
-    \item Stop. Verify clean shutdown.
-\end{enumerate}
-If all five pass, you are probably fine. If any fails, you have found the problem before the match---which is always better than finding it during the match.
-\end{mdframed}
-
-%-----------------------------------------------------------------------------
-\subsection{Competition Day Emergency Fixes}
-%-----------------------------------------------------------------------------
-
-\begin{mdframed}[linewidth=1.5pt, innertopmargin=10pt, innerbottommargin=10pt]
-\textbf{10-Minute Emergency Reference}
-
-\vspace{0.5em}
-When the match is imminent and something breaks, do not think deeply. Follow this table.
-
-\vspace{0.5em}
-\begin{tabular}{p{3cm} p{4.5cm} p{5.5cm}}
-\hline
-\textbf{Symptom} & \textbf{30-Second Diagnosis} & \textbf{2-Minute Fix} \\
-\hline
-Violent oscillation & Halve ALL gains & If still oscillating, set $K_d = 0$ \\
-\hline
-Overshoot & Reduce $K_i$ by 50\%, increase $K_d$ by 50\% & Add setpoint filter / ramp \\
-\hline
-Drift / steady-state error & Check sensor zero, reset integrators & Add or increase $K_i$ \\
-\hline
-No response & Check wiring, enable pin, PWM output & Verify sign convention \\
-\hline
-Erratic behavior & Reduce bandwidth (halve $K_p$ and $K_d$) & Add output rate limiting \\
-\hline
-Works on bench, fails on field & Surface friction/conditions changed & Increase $K_i$, decrease $K_d$ \\
-\hline
-\end{tabular}
-
-\vspace{0.5em}
-\textbf{Golden rule:} When in doubt, reduce all gains by 50\%. A sluggish robot that works beats a fast robot that crashes.
-\end{mdframed}
-
-\vspace{1em}
 
 %- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
